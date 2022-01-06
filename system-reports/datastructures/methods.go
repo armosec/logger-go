@@ -182,7 +182,6 @@ func (report *BaseReport) SetStatus(status string) {
 func (report *BaseReport) SetActionName(actionName string) {
 	report.mutex.Lock()
 	defer report.mutex.Unlock()
-	report.ActionName = strings.Title(actionName)
 	report.Status = JobStarted
 }
 
