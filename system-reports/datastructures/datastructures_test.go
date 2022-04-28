@@ -65,7 +65,7 @@ func BaseReportDiff(lhs, rhs *BaseReport) {
 	}
 
 }
-func TestUnmarshallingSuccess(t *testing.T) {
+func TestUnMarshallingSuccess(t *testing.T) {
 	lhs := BaseReport{Reporter: "unit-test", Target: "unit-test-framework", JobID: "1", ActionID: "1", Status: "testing", ActionName: "Testing", ActionIDN: 1}
 	rhs := &BaseReport{}
 	lhs.AddError("1")
@@ -86,7 +86,7 @@ func TestUnmarshallingSuccess(t *testing.T) {
 
 }
 
-func TestUnmarshallingPartial(t *testing.T) {
+func TestUnMarshallingPartial(t *testing.T) {
 	lhs := BaseReport{Reporter: "unit-test", Target: "unit-test-framework", JobID: "1", ActionID: "1", Status: "testing", ActionName: "Testing", ActionIDN: 1}
 	rhs := &BaseReport{}
 

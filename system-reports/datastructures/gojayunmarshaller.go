@@ -38,16 +38,6 @@ func (reporter *BaseReport) UnmarshalJSONObject(dec *gojay.Decoder, key string) 
 	return err
 }
 
-// func (errors *[]string) UnmarshalJSONArray(dec *gojay.Decoder) error {
-// 	lae := ""
-// 	if err := dec.String(&lae); err != nil {
-// 		return err
-// 	}
-
-// 	*t = append(*t, lae)
-// 	return nil
-// }
-
 func (ae *BaseReport) NKeys() int {
 	return 0
 }

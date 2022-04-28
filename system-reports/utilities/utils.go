@@ -24,10 +24,10 @@ func GetJobIDByContext(jobs []byte, context string) (string, datastructures.Jobs
 	return jobject.CurrJobID, jobject, err
 }
 
-func ProcessAnnotations(reporter datastructures.IReporter, ijobAnot interface{}, hasAnnotations bool) {
+func ProcessAnnotations(reporter datastructures.IReporter, jobAnnot interface{}, hasAnnotations bool) {
 	if hasAnnotations {
-		glog.Infof("has job annotation %s", ijobAnot)
-		tmpstr := fmt.Sprintf("%s", ijobAnot)
+		glog.Infof("has job annotation %s", jobAnnot)
+		tmpstr := fmt.Sprintf("%s", jobAnnot)
 		_, jobAnnotObj, jerr := GetJobIDByContext([]byte(tmpstr), "attach")
 		if jerr == nil {
 			if len(jobAnnotObj.CurrJobID) > 0 {

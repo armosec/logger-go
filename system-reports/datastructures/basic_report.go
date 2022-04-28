@@ -18,9 +18,9 @@ const (
 
 // JobsAnnotations job annotation
 type JobsAnnotations struct {
-	/*jobid: context   eg. if a certain job has multiple stages
+	/* jobID: context   eg. if a certain job has multiple stages
 	  eg. attach namespace>attach wlid in ns
-	  so obj when pod is catched should look like:
+	  so obj when pod is cached should look like:
 	  {
 		  jobID#1: {
 			"attach namespace"
@@ -42,7 +42,7 @@ type JobsAnnotations struct {
 //  "action": "<the action itself- eg. fetching logs from s3",
 //  "errors": <fill if u encountered any>
 //  "actionID" & "actionIDN" - numerical representation - eg if it's the first step then it should be 1, it also allow "forks" to happen
-// 	"jobID": event reciever will fill that for you
+// 	"jobID": event receiver will fill that for you
 // 	"parentAction": used like if you have like autoattach right? namespaces is the parent job but every wl up has attach but it's parent is the autoattach task
 // 	"timestamp": <s.e>
 // 	"customerGUID": s.e
@@ -103,43 +103,43 @@ func NewBaseReport(customerGUID, reporter string) *BaseReport {
 // IReporter reporter interface
 type IReporter interface {
 	// createReport() BaseReport
-	
+
 	/*
-	send the report
-	@Output:
-	int: http Status Code,
-	string: message: can be jobID for successful 1st report or "OK" from 2nd report onwards or "body could not be fetched"
-	error: error from event reciever
+		send the report
+		@Output:
+		int: http Status Code,
+		string: message: can be jobID for successful 1st report or "OK" from 2nd report onwards or "body could not be fetched"
+		error: error from event receiver
 	*/
 	Send() (int, string, error) //send logic here
 	GetReportID() string
-	/* a multiple errors can occur but these error are not critical, 
+	/* a multiple errors can occur but these error are not critical,
 	errorString will be added to a vector of errors so the error flow until the critical error will be clear
 	*/
 	AddError(errorString string)
-	GetNextActionId() string //get (luba wanted actionID to be a string)
+	GetNextActionId() string
 	NextActionID()
 	/*
-	SimpleReportAnnotations - create an object that can be passed on as annotation and serialize it.
-	sometimes we want to share the same jobID throught the system for e.g:
-	when we attach a workload we want the reports from websocket,webhook and inclusteraggregator to be with the id
-	and they're continuation of the same report.
-	
-	thus this will save the jobID,it's latest actionID.
-	@Input:
-	setParent- set parentJobID to the jobID
-	setCurrent - set the jobID to the current jobID
-	
-	@returns:
-	 jsonAsString, nextactionID
-	*/ 
+		SimpleReportAnnotations - create an object that can be passed on as annotation and serialize it.
+		sometimes we want to share the same jobID throughout the system. e.g:
+		when we attach a workload we want the reports from websocket,webhook and inclusteraggregator to be with the id
+		and they're continuation of the same report.
+
+		thus this will save the jobID,it's latest actionID.
+		@Input:
+		setParent- set parentJobID to the jobID
+		setCurrent - set the jobID to the current jobID
+
+		@returns:
+		 jsonAsString, nextactionID
+	*/
 	SimpleReportAnnotations(setParent bool, setCurrent bool) (string, string)
-	
-	/* 
-	SendAsRoutine 
-	@input:
-	collector []string - leave as empty (a way to hold all previous failed reports and send them in bulk)
-	progressNext bool - increase actionID, sometimes u send parallel jobs that have the same order - (vuln scanning a cluster for eg. all wl scans have the same order)
+
+	/*
+		SendAsRoutine
+		@input:
+		collector []string - leave as empty (a way to hold all previous failed reports and send them in bulk)
+		progressNext bool - increase actionID, sometimes u send parallel jobs that have the same order - (vuln scanning a cluster for eg. all wl scans have the same order)
 	*/
 	SendAsRoutine([]string, bool) //goroutine wrapper
 

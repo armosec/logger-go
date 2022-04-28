@@ -79,7 +79,7 @@ func (report *BaseReport) Send() (int, string, error) {
 	if len(url) == 0 {
 		url = os.Getenv("CA_ARMO_EVENT_URL") // Deprecated
 		if len(url) == 0 {
-			glog.Errorf("%s - Error: CA_EVENT_RECEIVER_HTTP is missing", report.GetReportID())
+			// glog.Errorf("%s - Error: CA_EVENT_RECEIVER_HTTP is missing", report.GetReportID())
 			return 0, "", nil
 		}
 	}
@@ -171,7 +171,7 @@ func (report *BaseReport) SendStatus(status string, sendReport bool) {
 func (report *BaseReport) SetReporter(reporter string) {
 	report.mutex.Lock()
 	defer report.mutex.Unlock()
-	report.Reporter = strings.Title(reporter)
+	report.Reporter = strings.ToTitle(reporter)
 }
 func (report *BaseReport) SetStatus(status string) {
 	report.mutex.Lock()

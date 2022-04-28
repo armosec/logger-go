@@ -40,7 +40,7 @@ func TestJobsAnnotation(t *testing.T) {
 
 	jobid, obj, err := utilities.GetJobIDByContext(marshal, "test")
 	if err != nil {
-		t.Errorf("unable to parhe json job annotation: %v", a)
+		t.Errorf("unable to parse json job annotation: %v", a)
 	}
 
 	if jobid != "test-job" || a.CurrJobID != obj.CurrJobID || a.LastActionID != obj.LastActionID || a.ParentJobID != obj.ParentJobID {
@@ -59,7 +59,7 @@ func TestBaseReportNextActionID(t *testing.T) {
 	// a.NextActionID()
 
 	// if a.ActionID != "4" {
-	// 	t.Errorf("NextActionID had unexpected behaviour %v", a)
+	// 	t.Errorf("NextActionID had unexpected behavior %v", a)
 	// }
 }
 
@@ -79,7 +79,7 @@ func TestBaseReportTestConcurrentErrorAdding(t *testing.T) {
 		wg.Wait()
 
 		if len(a.Errors) != 4 {
-			t.Errorf("an inconsistency error occured at round %d, expected 4 errors and got %v", j, a)
+			t.Errorf("an inconsistency error occurred at round %d, expected 4 errors and got %v", j, a)
 		}
 		a.Errors = nil
 
@@ -90,7 +90,7 @@ func TestBaseReportTestConcurrentErrorAdding(t *testing.T) {
 // func TestImmutableBaseReport(t *testing.T) {
 // 	jobId := ""
 // 	// target, reporter, actionID, action, status string, jobID *string, err error
-// 	utilities.SendImuttableReport("wlid://unit-test", "unit-test", "1", "testing", "starting", &jobId, fmt.Errorf("severe error"))
+// 	utilities.SendImmutableReport("wlid://unit-test", "unit-test", "1", "testing", "starting", &jobId, fmt.Errorf("severe error"))
 // 	// if len(jobId) == 0 {
 
 // 	t.Errorf("%v", jobId)
