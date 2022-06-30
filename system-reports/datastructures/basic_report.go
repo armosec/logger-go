@@ -103,50 +103,51 @@ func NewBaseReport(customerGUID, reporter string) *BaseReport {
 // IReporter reporter interface
 type IReporter interface {
 	// createReport() BaseReport
-	
+
 	/*
-	send the report
-	@Output:
-	int: http Status Code,
-	string: message: can be jobID for successful 1st report or "OK" from 2nd report onwards or "body could not be fetched"
-	error: error from event reciever
+		send the report
+		@Output:
+		int: http Status Code,
+		string: message: can be jobID for successful 1st report or "OK" from 2nd report onwards or "body could not be fetched"
+		error: error from event reciever
 	*/
 	Send() (int, string, error) //send logic here
 	GetReportID() string
-	/* a multiple errors can occur but these error are not critical, 
+	/* a multiple errors can occur but these error are not critical,
 	errorString will be added to a vector of errors so the error flow until the critical error will be clear
 	*/
 	AddError(errorString string)
 	GetNextActionId() string //get (luba wanted actionID to be a string)
 	NextActionID()
 	/*
-	SimpleReportAnnotations - create an object that can be passed on as annotation and serialize it.
-	sometimes we want to share the same jobID throught the system for e.g:
-	when we attach a workload we want the reports from websocket,webhook and inclusteraggregator to be with the id
-	and they're continuation of the same report.
-	
-	thus this will save the jobID,it's latest actionID.
-	@Input:
-	setParent- set parentJobID to the jobID
-	setCurrent - set the jobID to the current jobID
-	
-	@returns:
-	 jsonAsString, nextactionID
-	*/ 
-	SimpleReportAnnotations(setParent bool, setCurrent bool) (string, string)
-	
-	/* 
-	SendAsRoutine 
-	@input:
-	collector []string - leave as empty (a way to hold all previous failed reports and send them in bulk)
-	progressNext bool - increase actionID, sometimes u send parallel jobs that have the same order - (vuln scanning a cluster for eg. all wl scans have the same order)
+		SimpleReportAnnotations - create an object that can be passed on as annotation and serialize it.
+		sometimes we want to share the same jobID throught the system for e.g:
+		when we attach a workload we want the reports from websocket,webhook and inclusteraggregator to be with the id
+		and they're continuation of the same report.
+
+		thus this will save the jobID,it's latest actionID.
+		@Input:
+		setParent- set parentJobID to the jobID
+		setCurrent - set the jobID to the current jobID
+
+		@returns:
+		 jsonAsString, nextactionID
 	*/
-	SendAsRoutine([]string, bool) //goroutine wrapper
+	SimpleReportAnnotations(setParent bool, setCurrent bool) (string, string)
+
+	/*
+		SendAsRoutine
+		@input:
+		collector []string - leave as empty (a way to hold all previous failed reports and send them in bulk)
+		progressNext bool - increase actionID, sometimes u send parallel jobs that have the same order - (vuln scanning a cluster for eg. all wl scans have the same order)
+		errChan - chan to allow the goroutine to return the errors inside
+	*/
+	SendAsRoutine([]string, bool, chan<- error) //goroutine wrapper
 
 	// set methods
-	SendAction(string, bool)
-	SendError(error, bool, bool)
-	SendStatus(string, bool)
+	SendAction(string, bool, chan<- error)
+	SendError(error, bool, bool, chan<- error)
+	SendStatus(string, bool, chan<- error)
 
 	// set methods
 	SetReporter(string)
