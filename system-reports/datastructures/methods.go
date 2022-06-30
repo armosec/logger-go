@@ -72,6 +72,7 @@ func (report *BaseReport) SendAsRoutine(collector []string, progressNext bool, e
 		if progressNext {
 			report.NextActionID()
 		}
+		errChan <- nil
 	}()
 }
 func (report *BaseReport) GetReportID() string {
