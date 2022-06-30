@@ -59,6 +59,9 @@ func (report *BaseReport) SendAsRoutine(collector []string, progressNext bool, e
 	report.mutex.Lock()
 	go func() {
 		defer report.mutex.Unlock()
+		defer func() {
+			recover()
+		}()
 		status, _, err := report.Send()
 		if err != nil {
 			errChan <- err
