@@ -64,7 +64,7 @@ func SendImuttableReport(target, reporter, actionID, action, status string, jobI
 
 }
 
-func InitReporter(customerGUID, reporterName, actionName, wlid string, designator *armotypes.PortalDesignator) *datastructures.BaseReport {
+func InitReporter(customerGUID, reporterName, actionName, wlid string, designator *armotypes.PortalDesignator, errChan chan<- error) *datastructures.BaseReport {
 	reporter := datastructures.NewBaseReport(customerGUID, reporterName)
 	if actionName != "" {
 		reporter.SetActionName(actionName)
@@ -74,7 +74,7 @@ func InitReporter(customerGUID, reporterName, actionName, wlid string, designato
 	} else if designator != nil {
 		reporter.SetTarget(GetTargetFromDesignator(designator))
 	}
-	reporter.SendAsRoutine(EmptyString, true)
+	reporter.SendAsRoutine(EmptyString, true, errChan)
 	return reporter
 }
 

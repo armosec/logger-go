@@ -54,13 +54,20 @@ func (report *BaseReport) AddError(er string) {
 	report.Errors = append(report.Errors, er)
 }
 
-func (report *BaseReport) SendAsRoutine(collector []string, progressNext bool) {
+// The caller must read the errChan, to prevent the goroutine from waiting in memory forever
+func (report *BaseReport) SendAsRoutine(collector []string, progressNext bool, errChan chan<- error) {
 	report.mutex.Lock()
 	go func() {
 		defer report.mutex.Unlock()
-		status, _, _ := report.Send()
+		status, _, err := report.Send()
+		if err != nil {
+			errChan <- err
+			return
+		}
 		if status < 200 || status >= 300 {
-			// TODO handle error
+			err := fmt.Errorf("failed to send report. Status: %d", status)
+			errChan <- err
+			return
 		}
 		if progressNext {
 			report.NextActionID()
@@ -130,7 +137,7 @@ func (report *BaseReport) Send() (int, string, error) {
 // ======================================== SEND WRAPPER =======================================
 
 // SendError - wrap AddError
-func (report *BaseReport) SendError(err error, sendReport bool, initErrors bool) {
+func (report *BaseReport) SendError(err error, sendReport bool, initErrors bool, errChan chan<- error) {
 	report.mutex.Lock() // +
 
 	if report.Errors == nil {
@@ -143,7 +150,7 @@ func (report *BaseReport) SendError(err error, sendReport bool, initErrors bool)
 	report.Status = JobFailed // TODO - Add flag?
 	report.mutex.Unlock()     // -
 	if sendReport {
-		report.SendAsRoutine([]string{}, true)
+		report.SendAsRoutine([]string{}, true, errChan)
 	}
 	if sendReport && initErrors {
 		report.mutex.Lock() // +
@@ -152,17 +159,17 @@ func (report *BaseReport) SendError(err error, sendReport bool, initErrors bool)
 	}
 }
 
-func (report *BaseReport) SendAction(actionName string, sendReport bool) {
+func (report *BaseReport) SendAction(actionName string, sendReport bool, errChan chan<- error) {
 	report.SetActionName(actionName)
 	if sendReport {
-		report.SendAsRoutine([]string{}, true)
+		report.SendAsRoutine([]string{}, true, errChan)
 	}
 }
 
-func (report *BaseReport) SendStatus(status string, sendReport bool) {
+func (report *BaseReport) SendStatus(status string, sendReport bool, errChan chan<- error) {
 	report.SetStatus(status)
 	if sendReport {
-		report.SendAsRoutine([]string{}, true)
+		report.SendAsRoutine([]string{}, true, errChan)
 	}
 }
 
@@ -182,7 +189,7 @@ func (report *BaseReport) SetStatus(status string) {
 func (report *BaseReport) SetActionName(actionName string) {
 	report.mutex.Lock()
 	defer report.mutex.Unlock()
-	report.Status = JobStarted
+	report.ActionName = actionName
 }
 
 func (report *BaseReport) SetDetails(details string) {

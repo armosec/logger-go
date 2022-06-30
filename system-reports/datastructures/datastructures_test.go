@@ -105,3 +105,14 @@ func TestUnMarshallingPartial(t *testing.T) {
 	}
 
 }
+
+func TestSetAction(t *testing.T) {
+	lhs := BaseReport{Reporter: "unit-test", Target: "unit-test-framework",
+		JobID: "1", ActionID: "1", Status: "testing", ActionName: "Testing", ActionIDN: 1}
+	newAct := "blabla"
+	lhs.SetActionName(newAct)
+
+	if lhs.ActionName != newAct {
+		t.Errorf("wrong action name after set: %s", lhs.ActionName)
+	}
+}
