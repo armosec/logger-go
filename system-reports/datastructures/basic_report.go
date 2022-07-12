@@ -150,12 +150,13 @@ type IReporter interface {
 		progressNext bool - increase actionID, sometimes u send parallel jobs that have the same order - (vuln scanning a cluster for eg. all wl scans have the same order)
 		errChan - chan to allow the goroutine to return the errors inside
 	*/
-	SendAsRoutine([]string, bool, chan<- error) //goroutine wrapper
+	SendAsRoutine(bool, chan<- error) //goroutine wrapper
 
 	// set methods
 	SendAction(string, bool, chan<- error)
 	SendError(error, bool, bool, chan<- error)
 	SendStatus(string, bool, chan<- error)
+	SendDetails(string, bool, chan<- error)
 
 	// set methods
 	SetReporter(string)

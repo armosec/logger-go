@@ -55,7 +55,7 @@ func (report *BaseReport) AddError(er string) {
 }
 
 // The caller must read the errChan, to prevent the goroutine from waiting in memory forever
-func (report *BaseReport) SendAsRoutine(collector []string, progressNext bool, errChan chan<- error) {
+func (report *BaseReport) SendAsRoutine(progressNext bool, errChan chan<- error) {
 	report.mutex.Lock()
 	go func() {
 		defer report.mutex.Unlock()
@@ -154,7 +154,7 @@ func (report *BaseReport) SendError(err error, sendReport bool, initErrors bool,
 	report.Status = JobFailed // TODO - Add flag?
 	report.mutex.Unlock()     // -
 	if sendReport {
-		report.SendAsRoutine([]string{}, true, errChan)
+		report.SendAsRoutine(true, errChan)
 	}
 	if sendReport && initErrors {
 		report.mutex.Lock() // +
@@ -166,14 +166,21 @@ func (report *BaseReport) SendError(err error, sendReport bool, initErrors bool,
 func (report *BaseReport) SendAction(actionName string, sendReport bool, errChan chan<- error) {
 	report.SetActionName(actionName)
 	if sendReport {
-		report.SendAsRoutine([]string{}, true, errChan)
+		report.SendAsRoutine(true, errChan)
 	}
 }
 
 func (report *BaseReport) SendStatus(status string, sendReport bool, errChan chan<- error) {
 	report.SetStatus(status)
 	if sendReport {
-		report.SendAsRoutine([]string{}, true, errChan)
+		report.SendAsRoutine(true, errChan)
+	}
+}
+
+func (report *BaseReport) SendDetails(details string, sendReport bool, errChan chan<- error) {
+	report.SetDetails(details)
+	if sendReport {
+		report.SendAsRoutine(true, errChan)
 	}
 }
 

@@ -74,7 +74,7 @@ func InitReporter(customerGUID, reporterName, actionName, wlid string, designato
 	} else if designator != nil {
 		reporter.SetTarget(GetTargetFromDesignator(designator))
 	}
-	reporter.SendAsRoutine(EmptyString, true, errChan)
+	reporter.SendAsRoutine(true, errChan)
 	return reporter
 }
 
