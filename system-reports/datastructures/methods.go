@@ -194,15 +194,22 @@ func (report *BaseReport) SendError(err error, sendReport bool, initErrors bool,
 		if errChan != nil {
 			go func() { errChan <- nil }()
 		}
+		if initErrors {
+			report.Errors = make([]string, 0)
+		}
 		report.mutex.Unlock() // -
 	}
 }
 
 func (report *BaseReport) SendWarning(warnMsg string, sendReport bool, initWarnings bool, errChan chan<- error) {
 	report.mutex.Lock() // +
-	report.Errors = make([]string, 0)
-	e := fmt.Sprintf("Action: %s, Warning: %s", report.ActionName, warnMsg)
-	report.Errors = append(report.Errors, e)
+	if report.Errors == nil {
+		report.Errors = make([]string, 0)
+	}
+	if len(warnMsg) != 0 {
+		e := fmt.Sprintf("Action: %s, Error: %s", report.ActionName, warnMsg)
+		report.Errors = append(report.Errors, e)
+	}
 	report.Status = JobWarning
 
 	if sendReport {
@@ -218,6 +225,9 @@ func (report *BaseReport) SendWarning(warnMsg string, sendReport bool, initWarni
 	} else {
 		if errChan != nil {
 			go func() { errChan <- nil }()
+		}
+		if initWarnings {
+			report.Errors = make([]string, 0)
 		}
 		report.mutex.Unlock() // -
 	}

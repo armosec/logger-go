@@ -1,0 +1,15 @@
+{
+	"customerGUID": "a-user-guid",
+	"reporter": "my-reporter",
+	"target": "",
+	"status": "failure",
+	"action": "testing action",
+	"errors": [
+		"Action: testing action, Error: dummy error1"
+	],
+	"actionID": "3",
+	"numSeq": 3,
+	"jobID": "",
+	"details": "testing reporter",
+	"timestamp": "0001-01-01T00:00:00Z"
+}

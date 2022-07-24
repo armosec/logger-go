@@ -2,6 +2,7 @@ package datastructures
 
 import (
 	"bytes"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"reflect"
@@ -123,20 +124,26 @@ func TestSendDeadlock(t *testing.T) {
 	done := make(chan interface{})
 
 	go func() {
-		reporter := NewBaseReport("auser", "myreporter")
-		reporter.SetDetails("someDetails")
+		snapshotNum := 0
+		reporter := NewBaseReport("a-user-guid", "my-reporter")
+		reporter.SetDetails("testing reporter")
+		reporter.SetActionName("testing action")
 
 		err1 := fmt.Errorf("dummy error")
-		reporter.SendError(err1, true, true, nil)
-		reporter.SendError(err1, false, true, nil)
+		reporter.SendError(err1, true, false, nil)
 		reporter.SendError(err1, false, false, nil)
-		reporter.SendError(err1, true, true, nil)
+		reporter.SendError(err1, false, false, nil)
+		reporter.SendError(err1, true, false, nil)
+		snapshotNum++
+		compareSnapshot(snapshotNum, t, reporter)
 
 		errChan := make(chan error)
 		reporter.SendError(err1, true, true, errChan)
 		e := <-errChan
 		assert.Error(t, e)
 		done <- 0
+		snapshotNum++
+		compareSnapshot(snapshotNum, t, reporter)
 
 		errChan1 := make(chan error)
 		err2 := fmt.Errorf("dummy error1")
@@ -144,9 +151,22 @@ func TestSendDeadlock(t *testing.T) {
 		e = <-errChan1
 		assert.NoError(t, e)
 		done <- 1
+		snapshotNum++
+		compareSnapshot(snapshotNum, t, reporter)
+
+		reporter.SetJobID("job-id")
+		reporter.SetParentAction("parent-action")
+		reporter.SetActionName("testing action2")
+		reporter.SetActionIDN(20)
+		reporter.SetStatus("testing status")
+		reporter.SetTarget("testing target")
+		reporter.SetReporter("testing reporter v2")
+		reporter.SetCustomerGUID("new-customer-guid")
+		reporter.SetTimestamp(time.Date(2020, time.January, 1, 0, 0, 0, 0, time.UTC))
+		snapshotNum++
+		compareSnapshot(snapshotNum, t, reporter)
 
 		reporter.SendAsRoutine(true, nil)
-
 		errChan2 := make(chan error)
 		reporter.SendAsRoutine(true, errChan2)
 		e = <-errChan2
@@ -158,9 +178,13 @@ func TestSendDeadlock(t *testing.T) {
 		e = <-errChan3
 		assert.NoError(t, e)
 		done <- 3
+		snapshotNum++
+		compareSnapshot(snapshotNum, t, reporter)
 
 		reporter.SendStatus("status", true, nil)
 		reporter.SendStatus("status", false, nil)
+		snapshotNum++
+		compareSnapshot(snapshotNum, t, reporter)
 
 		errChan4 := make(chan error)
 		reporter.SendStatus("status", true, errChan4)
@@ -188,6 +212,8 @@ func TestSendDeadlock(t *testing.T) {
 		e = <-errChan7
 		assert.NoError(t, e)
 		done <- 7
+		snapshotNum++
+		compareSnapshot(snapshotNum, t, reporter)
 
 		reporter.SendDetails("details", true, nil)
 		reporter.SendDetails("details", false, nil)
@@ -203,11 +229,15 @@ func TestSendDeadlock(t *testing.T) {
 		e = <-errChan9
 		assert.NoError(t, e)
 		done <- 9
+		snapshotNum++
+		compareSnapshot(snapshotNum, t, reporter)
 
-		reporter.SendWarning("warning", true, true, nil)
-		reporter.SendWarning("warning", false, true, nil)
+		reporter.SendWarning("warning", true, false, nil)
+		reporter.SendWarning("warning", false, false, nil)
 		reporter.SendWarning("warning", false, false, nil)
 		reporter.SendWarning("warning", true, false, nil)
+		snapshotNum++
+		compareSnapshot(snapshotNum, t, reporter)
 
 		errChan10 := make(chan error)
 		reporter.SendWarning("warning", true, false, errChan10)
@@ -220,12 +250,16 @@ func TestSendDeadlock(t *testing.T) {
 		e = <-errChan11
 		assert.NoError(t, e)
 		done <- 11
+		snapshotNum++
+		compareSnapshot(snapshotNum, t, reporter)
 
 		errChan12 := make(chan error)
 		reporter.SendWarning("warning", false, true, errChan12)
 		e = <-errChan12
 		assert.NoError(t, e)
 		done <- 12
+		snapshotNum++
+		compareSnapshot(snapshotNum, t, reporter)
 
 	}()
 
@@ -242,4 +276,75 @@ func TestSendDeadlock(t *testing.T) {
 			}
 		}
 	}
+}
+
+//go:embed fixtures/report1_snapshot.json
+var report1_snapshot []byte
+
+//go:embed fixtures/report2_snapshot.json
+var report2_snapshot []byte
+
+//go:embed fixtures/report3_snapshot.json
+var report3_snapshot []byte
+
+//go:embed fixtures/report4_snapshot.json
+var report4_snapshot []byte
+
+//go:embed fixtures/report5_snapshot.json
+var report5_snapshot []byte
+
+//go:embed fixtures/report6_snapshot.json
+var report6_snapshot []byte
+
+//go:embed fixtures/report7_snapshot.json
+var report7_snapshot []byte
+
+//go:embed fixtures/report8_snapshot.json
+var report8_snapshot []byte
+
+//go:embed fixtures/report9_snapshot.json
+var report9_snapshot []byte
+
+//go:embed fixtures/report10_snapshot.json
+var report10_snapshot []byte
+
+//go:embed fixtures/report11_snapshot.json
+var report11_snapshot []byte
+
+func compareSnapshot(id int, t *testing.T, r *BaseReport) {
+	r.mutex.Lock()
+	rStr, _ := json.MarshalIndent(r, "", "\t")
+	/*
+		uncomment to update expected snapshots
+		os.WriteFile(fmt.Sprintf("./fixtures/report%d_snapshot.json", id), rStr, 0666)
+	*/
+	r.mutex.Unlock()
+	var expected []byte
+	switch id {
+	case 1:
+		expected = report1_snapshot
+	case 2:
+		expected = report2_snapshot
+	case 3:
+		expected = report3_snapshot
+	case 4:
+		expected = report4_snapshot
+	case 5:
+		expected = report5_snapshot
+	case 6:
+		expected = report6_snapshot
+	case 7:
+		expected = report7_snapshot
+	case 8:
+		expected = report8_snapshot
+	case 9:
+		expected = report9_snapshot
+	case 10:
+		expected = report10_snapshot
+	case 11:
+		expected = report11_snapshot
+	default:
+		t.Fatalf("Unknown snapshot id: %d", id)
+	}
+	assert.Equal(t, string(expected), string(rStr), "Snapshot id: %d is different than expected", id)
 }

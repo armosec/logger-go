@@ -6,6 +6,7 @@ require (
 	github.com/armosec/armoapi-go v0.0.69
 	github.com/francoispqt/gojay v1.2.13
 	github.com/golang/glog v1.0.0
+	github.com/google/go-cmp v0.5.5
 	github.com/stretchr/testify v1.7.0
 )
 
