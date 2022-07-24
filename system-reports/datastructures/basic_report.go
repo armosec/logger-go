@@ -60,19 +60,20 @@ const (
 )
 
 type BaseReport struct {
-	CustomerGUID string     `json:"customerGUID"` // customerGUID as declared in environment
-	Reporter     string     `json:"reporter"`     // webhook, webscoket, other possible components
-	Target       string     `json:"target"`       // wlid, cluster,etc. - which component this event is applicable on
-	Status       string     `json:"status"`       // Action scope: Before action use "started", after action use "failure/success". Reporter scope: Before action use "started", after action use "done".
-	ActionName   string     `json:"action"`       // Stage action. short description of the action to-be-done. When definding an action
-	Errors       []string   `json:"errors,omitempty"`
-	ActionID     string     `json:"actionID"`               // Stage counter of the E2E process. initialize at 1. The number is increased when sending job report
-	ActionIDN    int        `json:"numSeq"`                 // The ActionID in number presentation
-	JobID        string     `json:"jobID"`                  // UID received from the eventReceiver after first report (the initializing is part of the first report)
-	ParentAction string     `json:"parentAction,omitempty"` // Parent JobID
-	Details      string     `json:"details,omitempty"`      // Parent JobID
-	Timestamp    time.Time  `json:"timestamp"`              //
-	mutex        sync.Mutex `json:"-"`                      // ignore
+	CustomerGUID     string     `json:"customerGUID"` // customerGUID as declared in environment
+	Reporter         string     `json:"reporter"`     // webhook, webscoket, other possible components
+	Target           string     `json:"target"`       // wlid, cluster,etc. - which component this event is applicable on
+	Status           string     `json:"status"`       // Action scope: Before action use "started", after action use "failure/success". Reporter scope: Before action use "started", after action use "done".
+	ActionName       string     `json:"action"`       // Stage action. short description of the action to-be-done. When definding an action
+	Errors           []string   `json:"errors,omitempty"`
+	ActionID         string     `json:"actionID"`               // Stage counter of the E2E process. initialize at 1. The number is increased when sending job report
+	ActionIDN        int        `json:"numSeq"`                 // The ActionID in number presentation
+	JobID            string     `json:"jobID"`                  // UID received from the eventReceiver after first report (the initializing is part of the first report)
+	ParentAction     string     `json:"parentAction,omitempty"` // Parent JobID
+	Details          string     `json:"details,omitempty"`      // Parent JobID
+	Timestamp        time.Time  `json:"timestamp"`              //
+	mutex            sync.Mutex `json:"-"`                      // ignore
+	eventReceiverUrl string     `json:"-"`                      // ignore
 	// Status       StatusType `json:"status"`   //it's status
 }
 

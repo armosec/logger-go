@@ -20,6 +20,18 @@ var MAX_RETRIES int = 3
 func (report *BaseReport) InitMutex() {
 	report.mutex = sync.Mutex{}
 }
+func (report *BaseReport) getEventReceiverUrl() (string, error) {
+	if len(report.eventReceiverUrl) == 0 {
+		report.eventReceiverUrl = os.Getenv("CA_EVENT_RECEIVER_HTTP")
+	}
+	if len(report.eventReceiverUrl) == 0 {
+		report.eventReceiverUrl = os.Getenv("CA_ARMO_EVENT_URL") // Deprecated
+	}
+	if len(report.eventReceiverUrl) == 0 {
+		return "", fmt.Errorf("%s - Error: CA_EVENT_RECEIVER_HTTP is missing", report.GetReportID())
+	}
+	return report.eventReceiverUrl, nil
+}
 
 func (report *BaseReport) NextActionID() {
 	report.ActionIDN++
@@ -102,15 +114,11 @@ func (report *BaseReport) GetReportID() string {
 // Send - send http request. returns-> http status code, return message (jobID/OK), http/go error
 func (report *BaseReport) Send() (int, string, error) {
 
-	url := os.Getenv("CA_EVENT_RECEIVER_HTTP")
-
-	if len(url) == 0 {
-		url = os.Getenv("CA_ARMO_EVENT_URL") // Deprecated
-		if len(url) == 0 {
-			// glog.Errorf("%s - Error: CA_EVENT_RECEIVER_HTTP is missing", report.GetReportID())
-			return 0, "", nil
-		}
+	url, err := report.getEventReceiverUrl()
+	if err != nil {
+		return 0, "", err
 	}
+
 	url = url + SysreportEndpoint
 	report.Timestamp = time.Now()
 	if report.ActionID == "" {
