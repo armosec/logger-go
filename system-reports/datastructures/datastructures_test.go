@@ -126,8 +126,13 @@ func TestSendDeadlock(t *testing.T) {
 		reporter := NewBaseReport("auser", "myreporter")
 		reporter.SetDetails("someDetails")
 
-		errChan := make(chan error)
 		err1 := fmt.Errorf("dummy error")
+		reporter.SendError(err1, true, true, nil)
+		reporter.SendError(err1, false, true, nil)
+		reporter.SendError(err1, false, false, nil)
+		reporter.SendError(err1, true, true, nil)
+
+		errChan := make(chan error)
 		reporter.SendError(err1, true, true, errChan)
 		e := <-errChan
 		assert.Error(t, e)
@@ -139,6 +144,8 @@ func TestSendDeadlock(t *testing.T) {
 		e = <-errChan1
 		assert.NoError(t, e)
 		done <- 1
+
+		reporter.SendAsRoutine(true, nil)
 
 		errChan2 := make(chan error)
 		reporter.SendAsRoutine(true, errChan2)
@@ -152,6 +159,9 @@ func TestSendDeadlock(t *testing.T) {
 		assert.NoError(t, e)
 		done <- 3
 
+		reporter.SendStatus("status", true, nil)
+		reporter.SendStatus("status", false, nil)
+
 		errChan4 := make(chan error)
 		reporter.SendStatus("status", true, errChan4)
 		e = <-errChan4
@@ -163,6 +173,9 @@ func TestSendDeadlock(t *testing.T) {
 		e = <-errChan5
 		assert.NoError(t, e)
 		done <- 5
+
+		reporter.SendAction("action", true, nil)
+		reporter.SendAction("action", false, nil)
 
 		errChan6 := make(chan error)
 		reporter.SendAction("action", true, errChan6)
@@ -176,6 +189,9 @@ func TestSendDeadlock(t *testing.T) {
 		assert.NoError(t, e)
 		done <- 7
 
+		reporter.SendDetails("details", true, nil)
+		reporter.SendDetails("details", false, nil)
+
 		errChan8 := make(chan error)
 		reporter.SendDetails("details", true, errChan8)
 		e = <-errChan8
@@ -187,6 +203,11 @@ func TestSendDeadlock(t *testing.T) {
 		e = <-errChan9
 		assert.NoError(t, e)
 		done <- 9
+
+		reporter.SendWarning("warning", true, true, nil)
+		reporter.SendWarning("warning", false, true, nil)
+		reporter.SendWarning("warning", false, false, nil)
+		reporter.SendWarning("warning", true, false, nil)
 
 		errChan10 := make(chan error)
 		reporter.SendWarning("warning", true, false, errChan10)

@@ -75,19 +75,25 @@ func (report *BaseReport) unprotectedSendAsRoutine(errChan chan<- error, progres
 			recover()
 		}()
 		status, _, err := report.Send()
-		if err != nil {
-			errChan <- err
-			return
+
+		if errChan != nil {
+			if err != nil {
+				errChan <- err
+				return
+			}
+			if status < 200 || status >= 300 {
+				err := fmt.Errorf("failed to send report. Status: %d", status)
+				errChan <- err
+				return
+			}
 		}
-		if status < 200 || status >= 300 {
-			err := fmt.Errorf("failed to send report. Status: %d", status)
-			errChan <- err
-			return
-		}
+
 		if progressNext {
 			report.NextActionID()
 		}
-		errChan <- nil
+		if errChan != nil {
+			errChan <- nil
+		}
 	}()
 }
 
@@ -178,7 +184,9 @@ func (report *BaseReport) SendError(err error, sendReport bool, initErrors bool,
 			report.mutex.Unlock() // -
 		}(report)
 	} else {
-		go func() { errChan <- nil }()
+		if errChan != nil {
+			go func() { errChan <- nil }()
+		}
 		report.mutex.Unlock() // -
 	}
 }
@@ -201,7 +209,9 @@ func (report *BaseReport) SendWarning(warnMsg string, sendReport bool, initWarni
 			report.mutex.Unlock() // -
 		}(report)
 	} else {
-		go func() { errChan <- nil }()
+		if errChan != nil {
+			go func() { errChan <- nil }()
+		}
 		report.mutex.Unlock() // -
 	}
 }
@@ -217,7 +227,9 @@ func (report *BaseReport) SendAction(actionName string, sendReport bool, errChan
 			report.mutex.Unlock() // -
 		}(report)
 	} else {
-		go func() { errChan <- nil }()
+		if errChan != nil {
+			go func() { errChan <- nil }()
+		}
 		report.mutex.Unlock() // -
 	}
 }
@@ -233,7 +245,9 @@ func (report *BaseReport) SendStatus(status string, sendReport bool, errChan cha
 			report.mutex.Unlock() // -
 		}(report)
 	} else {
-		go func() { errChan <- nil }()
+		if errChan != nil {
+			go func() { errChan <- nil }()
+		}
 		report.mutex.Unlock() // -
 	}
 }
@@ -249,7 +263,9 @@ func (report *BaseReport) SendDetails(details string, sendReport bool, errChan c
 			report.mutex.Unlock() // -
 		}(report)
 	} else {
-		go func() { errChan <- nil }()
+		if errChan != nil {
+			go func() { errChan <- nil }()
+		}
 		report.mutex.Unlock() // -
 	}
 }
