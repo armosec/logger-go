@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/francoispqt/gojay"
 )
 
@@ -114,5 +116,108 @@ func TestSetAction(t *testing.T) {
 
 	if lhs.ActionName != newAct {
 		t.Errorf("wrong action name after set: %s", lhs.ActionName)
+	}
+}
+
+func TestSendDeadlock(t *testing.T) {
+	done := make(chan interface{})
+
+	go func() {
+		reporter := NewBaseReport("auser", "myreporter")
+		reporter.SetDetails("someDetails")
+
+		errChan := make(chan error)
+		err1 := fmt.Errorf("dummy error")
+		reporter.SendError(err1, true, true, errChan)
+		e := <-errChan
+		assert.Error(t, e)
+		done <- 0
+
+		errChan1 := make(chan error)
+		err2 := fmt.Errorf("dummy error1")
+		reporter.SendError(err2, false, false, errChan1)
+		e = <-errChan1
+		assert.NoError(t, e)
+		done <- 1
+
+		errChan2 := make(chan error)
+		reporter.SendAsRoutine(true, errChan2)
+		e = <-errChan2
+		assert.Error(t, e)
+		done <- 2
+
+		errChan3 := make(chan error)
+		reporter.SendError(nil, false, true, errChan3)
+		e = <-errChan3
+		assert.NoError(t, e)
+		done <- 3
+
+		errChan4 := make(chan error)
+		reporter.SendStatus("status", true, errChan4)
+		e = <-errChan4
+		assert.Error(t, e)
+		done <- 4
+
+		errChan5 := make(chan error)
+		reporter.SendStatus("status", false, errChan5)
+		e = <-errChan5
+		assert.NoError(t, e)
+		done <- 5
+
+		errChan6 := make(chan error)
+		reporter.SendAction("action", true, errChan6)
+		e = <-errChan6
+		assert.Error(t, e)
+		done <- 6
+
+		errChan7 := make(chan error)
+		reporter.SendAction("action", false, errChan7)
+		e = <-errChan7
+		assert.NoError(t, e)
+		done <- 7
+
+		errChan8 := make(chan error)
+		reporter.SendDetails("details", true, errChan8)
+		e = <-errChan8
+		assert.Error(t, e)
+		done <- 8
+
+		errChan9 := make(chan error)
+		reporter.SendDetails("details", false, errChan9)
+		e = <-errChan9
+		assert.NoError(t, e)
+		done <- 9
+
+		errChan10 := make(chan error)
+		reporter.SendWarning("warning", true, false, errChan10)
+		e = <-errChan10
+		assert.Error(t, e)
+		done <- 10
+
+		errChan11 := make(chan error)
+		reporter.SendWarning("warning", false, false, errChan11)
+		e = <-errChan11
+		assert.NoError(t, e)
+		done <- 11
+
+		errChan12 := make(chan error)
+		reporter.SendWarning("warning", false, true, errChan12)
+		e = <-errChan12
+		assert.NoError(t, e)
+		done <- 11
+
+	}()
+
+	for i := 0; i < 12; i++ {
+		select {
+		case <-time.After(1 * time.Second):
+			if i != 12 {
+				t.Fatalf("Deadlock detected message %d did not arrived", i)
+			}
+		case <-done:
+			if i == 12 {
+				t.Errorf("unexpected message %d ", i)
+			}
+		}
 	}
 }

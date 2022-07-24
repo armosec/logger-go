@@ -54,6 +54,7 @@ type StatusType string
 const (
 	JobSuccess string = "success"
 	JobFailed  string = "failure"
+	JobWarning string = "warning"
 	JobStarted string = "started"
 	JobDone    string = "done"
 )
@@ -153,10 +154,11 @@ type IReporter interface {
 	SendAsRoutine(bool, chan<- error) //goroutine wrapper
 
 	// set methods
-	SendAction(string, bool, chan<- error)
-	SendError(error, bool, bool, chan<- error)
-	SendStatus(string, bool, chan<- error)
-	SendDetails(string, bool, chan<- error)
+	SendAction(action string, sendReport bool, errChan chan<- error)
+	SendError(err error, sendReport bool, initErrors bool, errChan chan<- error)
+	SendStatus(status string, sendReport bool, errChan chan<- error)
+	SendDetails(details string, sendReport bool, errChan chan<- error)
+	SendWarning(warning string, sendReport bool, initErrors bool, errChan chan<- error)
 
 	// set methods
 	SetReporter(string)

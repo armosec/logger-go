@@ -57,9 +57,21 @@ func (report *BaseReport) AddError(er string) {
 // The caller must read the errChan, to prevent the goroutine from waiting in memory forever
 func (report *BaseReport) SendAsRoutine(progressNext bool, errChan chan<- error) {
 	report.mutex.Lock()
+	wg := &sync.WaitGroup{}
+	report.unprotectedSendAsRoutine(errChan, progressNext, wg)
+	go func(report *BaseReport) {
+		wg.Wait()
+		report.mutex.Unlock()
+	}(report)
+}
+
+//internal send as routine without mutex lock
+func (report *BaseReport) unprotectedSendAsRoutine(errChan chan<- error, progressNext bool, wg *sync.WaitGroup) {
+	wg.Add(1)
 	go func() {
-		defer report.mutex.Unlock()
+
 		defer func() {
+			wg.Done()
 			recover()
 		}()
 		status, _, err := report.Send()
@@ -78,6 +90,7 @@ func (report *BaseReport) SendAsRoutine(progressNext bool, errChan chan<- error)
 		errChan <- nil
 	}()
 }
+
 func (report *BaseReport) GetReportID() string {
 	return fmt.Sprintf("%s::%s::%s (verbose:  %s::%s)", report.Target, report.JobID, report.ActionID, report.ParentAction, report.ActionName)
 }
@@ -119,7 +132,8 @@ func (report *BaseReport) Send() (int, string, error) {
 		if i == MAX_RETRIES-1 {
 			return 500, e.Error(), err
 		}
-
+		//wait a second before next retry
+		time.Sleep(time.Second * 1)
 	}
 	// TODO - test retry
 
@@ -152,35 +166,91 @@ func (report *BaseReport) SendError(err error, sendReport bool, initErrors bool,
 		report.Errors = append(report.Errors, e)
 	}
 	report.Status = JobFailed // TODO - Add flag?
-	report.mutex.Unlock()     // -
+
 	if sendReport {
-		report.SendAsRoutine(true, errChan)
+		wg := &sync.WaitGroup{}
+		report.unprotectedSendAsRoutine(errChan, true, wg)
+		go func(report *BaseReport) {
+			wg.Wait()
+			if initErrors {
+				report.Errors = make([]string, 0)
+			}
+			report.mutex.Unlock() // -
+		}(report)
+	} else {
+		go func() { errChan <- nil }()
+		report.mutex.Unlock() // -
 	}
-	if sendReport && initErrors {
-		report.mutex.Lock() // +
-		report.Errors = make([]string, 0)
+}
+
+func (report *BaseReport) SendWarning(warnMsg string, sendReport bool, initErrors bool, errChan chan<- error) {
+	report.mutex.Lock() // +
+	report.Errors = make([]string, 0)
+	e := fmt.Sprintf("Action: %s, Warning: %s", report.ActionName, warnMsg)
+	report.Errors = append(report.Errors, e)
+	report.Status = JobWarning
+
+	if sendReport {
+		wg := &sync.WaitGroup{}
+		report.unprotectedSendAsRoutine(errChan, true, wg)
+		go func(report *BaseReport) {
+			wg.Wait()
+			if initErrors {
+				report.Errors = make([]string, 0)
+			}
+			report.mutex.Unlock() // -
+		}(report)
+	} else {
+		go func() { errChan <- nil }()
 		report.mutex.Unlock() // -
 	}
 }
 
 func (report *BaseReport) SendAction(actionName string, sendReport bool, errChan chan<- error) {
-	report.SetActionName(actionName)
+	report.mutex.Lock()
+	report.ActionName = actionName
 	if sendReport {
-		report.SendAsRoutine(true, errChan)
+		wg := &sync.WaitGroup{}
+		report.unprotectedSendAsRoutine(errChan, true, wg)
+		go func(report *BaseReport) {
+			wg.Wait()
+			report.mutex.Unlock() // -
+		}(report)
+	} else {
+		go func() { errChan <- nil }()
+		report.mutex.Unlock() // -
 	}
 }
 
 func (report *BaseReport) SendStatus(status string, sendReport bool, errChan chan<- error) {
-	report.SetStatus(status)
+	report.mutex.Lock()
+	report.Status = status
 	if sendReport {
-		report.SendAsRoutine(true, errChan)
+		wg := &sync.WaitGroup{}
+		report.unprotectedSendAsRoutine(errChan, true, wg)
+		go func(report *BaseReport) {
+			wg.Wait()
+			report.mutex.Unlock() // -
+		}(report)
+	} else {
+		go func() { errChan <- nil }()
+		report.mutex.Unlock() // -
 	}
 }
 
 func (report *BaseReport) SendDetails(details string, sendReport bool, errChan chan<- error) {
-	report.SetDetails(details)
+	report.mutex.Lock()
+	report.Details = details
 	if sendReport {
-		report.SendAsRoutine(true, errChan)
+		wg := &sync.WaitGroup{}
+		report.unprotectedSendAsRoutine(errChan, true, wg)
+		go func(report *BaseReport) {
+			wg.Wait()
+			report.mutex.Unlock() // -
+		}(report)
+	} else {
+		go func() { errChan <- nil }()
+		report.mutex.Unlock() // -
 	}
 }
 
