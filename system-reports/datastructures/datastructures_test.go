@@ -212,7 +212,7 @@ func TestSendDeadlock(t *testing.T) {
 		select {
 		case <-time.After(1 * time.Second):
 			if i != 12 {
-				t.Fatalf("Deadlock detected message %d did not arrived", i)
+				t.Fatalf("Deadlock detected message %d did not arrive", i)
 			}
 		case <-done:
 			if i == 12 {

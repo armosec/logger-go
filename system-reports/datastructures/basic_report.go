@@ -158,7 +158,7 @@ type IReporter interface {
 	SendError(err error, sendReport bool, initErrors bool, errChan chan<- error)
 	SendStatus(status string, sendReport bool, errChan chan<- error)
 	SendDetails(details string, sendReport bool, errChan chan<- error)
-	SendWarning(warning string, sendReport bool, initErrors bool, errChan chan<- error)
+	SendWarning(warning string, sendReport bool, initWarnings bool, errChan chan<- error)
 
 	// set methods
 	SetReporter(string)

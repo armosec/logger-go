@@ -183,7 +183,7 @@ func (report *BaseReport) SendError(err error, sendReport bool, initErrors bool,
 	}
 }
 
-func (report *BaseReport) SendWarning(warnMsg string, sendReport bool, initErrors bool, errChan chan<- error) {
+func (report *BaseReport) SendWarning(warnMsg string, sendReport bool, initWarnings bool, errChan chan<- error) {
 	report.mutex.Lock() // +
 	report.Errors = make([]string, 0)
 	e := fmt.Sprintf("Action: %s, Warning: %s", report.ActionName, warnMsg)
@@ -195,7 +195,7 @@ func (report *BaseReport) SendWarning(warnMsg string, sendReport bool, initError
 		report.unprotectedSendAsRoutine(errChan, true, wg)
 		go func(report *BaseReport) {
 			wg.Wait()
-			if initErrors {
+			if initWarnings {
 				report.Errors = make([]string, 0)
 			}
 			report.mutex.Unlock() // -
