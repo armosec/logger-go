@@ -217,7 +217,7 @@ func (report *BaseReport) SendWarning(warnMsg string, sendReport bool, initWarni
 
 func (report *BaseReport) SendAction(actionName string, sendReport bool, errChan chan<- error) {
 	report.mutex.Lock()
-	report.ActionName = actionName
+	report.setActionName(actionName)
 	if sendReport {
 		wg := &sync.WaitGroup{}
 		report.unprotectedSendAsRoutine(errChan, true, wg)
@@ -235,7 +235,7 @@ func (report *BaseReport) SendAction(actionName string, sendReport bool, errChan
 
 func (report *BaseReport) SendStatus(status string, sendReport bool, errChan chan<- error) {
 	report.mutex.Lock()
-	report.Status = status
+	report.setStatus(status)
 	if sendReport {
 		wg := &sync.WaitGroup{}
 		report.unprotectedSendAsRoutine(errChan, true, wg)
@@ -253,7 +253,7 @@ func (report *BaseReport) SendStatus(status string, sendReport bool, errChan cha
 
 func (report *BaseReport) SendDetails(details string, sendReport bool, errChan chan<- error) {
 	report.mutex.Lock()
-	report.Details = details
+	report.setDetails(details)
 	if sendReport {
 		wg := &sync.WaitGroup{}
 		report.unprotectedSendAsRoutine(errChan, true, wg)
@@ -274,59 +274,90 @@ func (report *BaseReport) SendDetails(details string, sendReport bool, errChan c
 func (report *BaseReport) SetReporter(reporter string) {
 	report.mutex.Lock()
 	defer report.mutex.Unlock()
+	report.setReporter(reporter)
+}
+func (report *BaseReport) setReporter(reporter string) {
 	report.Reporter = strings.ToTitle(reporter)
 }
+
 func (report *BaseReport) SetStatus(status string) {
 	report.mutex.Lock()
 	defer report.mutex.Unlock()
+	report.setStatus(status)
+}
+func (report *BaseReport) setStatus(status string) {
 	report.Status = status
 }
 
 func (report *BaseReport) SetActionName(actionName string) {
 	report.mutex.Lock()
 	defer report.mutex.Unlock()
+	report.setActionName(actionName)
+}
+func (report *BaseReport) setActionName(actionName string) {
 	report.ActionName = actionName
 }
 
 func (report *BaseReport) SetDetails(details string) {
 	report.mutex.Lock()
 	defer report.mutex.Unlock()
+	report.setDetails(details)
+}
+func (report *BaseReport) setDetails(details string) {
 	report.Details = details
 }
 
 func (report *BaseReport) SetTarget(target string) {
 	report.mutex.Lock()
 	defer report.mutex.Unlock()
+	report.setTarget(target)
+}
+func (report *BaseReport) setTarget(target string) {
 	report.Target = target
 }
 
 func (report *BaseReport) SetActionID(actionID string) {
 	report.mutex.Lock()
 	defer report.mutex.Unlock()
+	report.setActionID(actionID)
+}
+func (report *BaseReport) setActionID(actionID string) {
 	report.ActionID = actionID
 }
 
 func (report *BaseReport) SetJobID(jobID string) {
 	report.mutex.Lock()
 	defer report.mutex.Unlock()
+	report.setJobID(jobID)
+}
+func (report *BaseReport) setJobID(jobID string) {
 	report.JobID = jobID
 }
 
 func (report *BaseReport) SetParentAction(parentAction string) {
 	report.mutex.Lock()
 	defer report.mutex.Unlock()
+	report.setParentAction(parentAction)
+}
+func (report *BaseReport) setParentAction(parentAction string) {
 	report.ParentAction = parentAction
 }
 
 func (report *BaseReport) SetCustomerGUID(customerGUID string) {
 	report.mutex.Lock()
 	defer report.mutex.Unlock()
+	report.setCustomerGUID(customerGUID)
+}
+func (report *BaseReport) setCustomerGUID(customerGUID string) {
 	report.CustomerGUID = customerGUID
 }
 
 func (report *BaseReport) SetActionIDN(actionIDN int) {
 	report.mutex.Lock()
 	defer report.mutex.Unlock()
+	report.setActionIDN(actionIDN)
+}
+func (report *BaseReport) setActionIDN(actionIDN int) {
 	report.ActionIDN = actionIDN
 	report.ActionID = strconv.Itoa(report.ActionIDN)
 }
@@ -334,6 +365,9 @@ func (report *BaseReport) SetActionIDN(actionIDN int) {
 func (report *BaseReport) SetTimestamp(timestamp time.Time) {
 	report.mutex.Lock()
 	defer report.mutex.Unlock()
+	report.setTimestamp(timestamp)
+}
+func (report *BaseReport) setTimestamp(timestamp time.Time) {
 	report.Timestamp = timestamp
 }
 
