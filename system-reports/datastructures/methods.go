@@ -74,20 +74,18 @@ func (report *BaseReport) unprotectedSendAsRoutine(errChan chan<- error, progres
 			wg.Done()
 			recover()
 		}()
-		status, _, err := report.Send()
-
+		status, body, err := report.Send()
 		if errChan != nil {
 			if err != nil {
 				errChan <- err
 				return
 			}
 			if status < 200 || status >= 300 {
-				err := fmt.Errorf("failed to send report. Status: %d", status)
+				err := fmt.Errorf("failed to send report. Status: %d Body:%s", status, body)
 				errChan <- err
 				return
 			}
 		}
-
 		if progressNext {
 			report.NextActionID()
 		}
@@ -126,36 +124,37 @@ func (report *BaseReport) Send() (int, string, error) {
 		return 500, "Couldn't marshall report object", err
 	}
 	var resp *http.Response
-
+	var bodyAsStr string
 	for i := 0; i < MAX_RETRIES; i++ {
 		resp, err = http.Post(url, "application/json", bytes.NewBuffer(reqBody))
+		bodyAsStr = "body could not be fetched"
+		if resp != nil && resp.Body != nil {
+			body, err := ioutil.ReadAll(resp.Body)
+			if err == nil {
+				bodyAsStr = string(body)
+			}
+			resp.Body.Close()
+		}
 		if err == nil {
 			break
 		}
-		e := fmt.Errorf("attempt #%d %s - Failed posting report. Url: '%s', reason: '%s' report: '%s' ", i, report.GetReportID(), url, err.Error(), string(reqBody))
+		//else err != nil
+		e := fmt.Errorf("attempt #%d %s - Failed posting report. Url: '%s', reason: '%s' report: '%s' response: '%s'", i, report.GetReportID(), url, err.Error(), string(reqBody), bodyAsStr)
 		glog.Error(e)
 
 		if i == MAX_RETRIES-1 {
 			return 500, e.Error(), err
 		}
-		//wait a second before next retry
-		time.Sleep(time.Second * 1)
+		//wait 5 secs between retries
+		time.Sleep(time.Second * 5)
 	}
-	// TODO - test retry
-
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	bodyAsStr := "body could not be fetched"
-	if err == nil {
-		bodyAsStr = string(body)
-	}
-
 	//first successful report gets it's jobID/proccessID
 	if len(report.JobID) == 0 && bodyAsStr != "ok" && resp.StatusCode >= 200 && resp.StatusCode < 300 {
 		report.JobID = bodyAsStr
 		glog.Infof("Generated jobID: '%s'", report.JobID)
 	}
 	return resp.StatusCode, bodyAsStr, nil
+
 }
 
 // ======================================== SEND WRAPPER =======================================
