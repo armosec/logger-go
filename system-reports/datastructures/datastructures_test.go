@@ -225,19 +225,20 @@ func TestSendDeadlock(t *testing.T) {
 		reporter.SendWarning("warning", false, true, errChan12)
 		e = <-errChan12
 		assert.NoError(t, e)
-		done <- 11
+		done <- 12
 
 	}()
 
-	for i := 0; i < 12; i++ {
+	expectedMsgs := 12
+	for i := 0; i <= expectedMsgs+1; i++ {
 		select {
-		case <-time.After(1 * time.Second):
-			if i != 12 {
+		case <-time.After(300 * time.Millisecond):
+			if i <= expectedMsgs {
 				t.Fatalf("Deadlock detected message %d did not arrive", i)
 			}
-		case <-done:
-			if i == 12 {
-				t.Errorf("unexpected message %d ", i)
+		case id := <-done:
+			if i > expectedMsgs {
+				t.Errorf("unexpected message %d id:%d", i, id)
 			}
 		}
 	}
