@@ -149,10 +149,9 @@ func TestSendDeadlock(t *testing.T) {
 		snapshotNum++
 		compareSnapshot(snapshotNum, t, reporter)
 
-		errChan1 := make(chan error)
 		err2 := fmt.Errorf("dummy error1")
-		reporter.SendError(err2, false, false, errChan1)
-		e = <-errChan1
+		reporter.SendError(err2, false, false, errChan)
+		e = <-errChan
 		assert.NoError(t, e)
 		done <- 1
 		snapshotNum++
@@ -171,15 +170,15 @@ func TestSendDeadlock(t *testing.T) {
 		compareSnapshot(snapshotNum, t, reporter)
 
 		reporter.SendAsRoutine(true, nil)
-		errChan2 := make(chan error)
-		reporter.SendAsRoutine(true, errChan2)
-		e = <-errChan2
+		//errChan2 := make(chan error)
+		reporter.SendAsRoutine(true, errChan)
+		e = <-errChan
 		assert.Error(t, e)
 		done <- 2
 
-		errChan3 := make(chan error)
-		reporter.SendError(nil, false, true, errChan3)
-		e = <-errChan3
+		//errChan3 := make(chan error)
+		reporter.SendError(nil, false, true, errChan)
+		e = <-errChan
 		assert.NoError(t, e)
 		done <- 3
 		snapshotNum++
@@ -190,9 +189,8 @@ func TestSendDeadlock(t *testing.T) {
 		snapshotNum++
 		compareSnapshot(snapshotNum, t, reporter)
 
-		errChan4 := make(chan error)
-		reporter.SendStatus("status", true, errChan4)
-		e = <-errChan4
+		reporter.SendStatus("status", true, errChan)
+		e = <-errChan
 		assert.Error(t, e)
 		done <- 4
 
@@ -205,15 +203,13 @@ func TestSendDeadlock(t *testing.T) {
 		reporter.SendAction("action", true, nil)
 		reporter.SendAction("action", false, nil)
 
-		errChan6 := make(chan error)
-		reporter.SendAction("action", true, errChan6)
-		e = <-errChan6
+		reporter.SendAction("action", true, errChan)
+		e = <-errChan
 		assert.Error(t, e)
 		done <- 6
 
-		errChan7 := make(chan error)
-		reporter.SendAction("action", false, errChan7)
-		e = <-errChan7
+		reporter.SendAction("action", false, errChan)
+		e = <-errChan
 		assert.NoError(t, e)
 		done <- 7
 		snapshotNum++
@@ -222,15 +218,13 @@ func TestSendDeadlock(t *testing.T) {
 		reporter.SendDetails("details", true, nil)
 		reporter.SendDetails("details", false, nil)
 
-		errChan8 := make(chan error)
-		reporter.SendDetails("details", true, errChan8)
-		e = <-errChan8
+		reporter.SendDetails("details", true, errChan)
+		e = <-errChan
 		assert.Error(t, e)
 		done <- 8
 
-		errChan9 := make(chan error)
-		reporter.SendDetails("details", false, errChan9)
-		e = <-errChan9
+		reporter.SendDetails("details", false, errChan)
+		e = <-errChan
 		assert.NoError(t, e)
 		done <- 9
 		snapshotNum++
@@ -243,40 +237,36 @@ func TestSendDeadlock(t *testing.T) {
 		snapshotNum++
 		compareSnapshot(snapshotNum, t, reporter)
 
-		errChan10 := make(chan error)
-		reporter.SendWarning("warning", true, false, errChan10)
-		e = <-errChan10
+		reporter.SendWarning("warning", true, false, errChan)
+		e = <-errChan
 		assert.Error(t, e)
 		done <- 10
 
-		errChan11 := make(chan error)
-		reporter.SendWarning("warning", false, false, errChan11)
-		e = <-errChan11
+		reporter.SendWarning("warning", false, false, errChan)
+		e = <-errChan
 		assert.NoError(t, e)
 		done <- 11
 		snapshotNum++
 		compareSnapshot(snapshotNum, t, reporter)
 
-		errChan12 := make(chan error)
-		reporter.SendWarning("warning", false, true, errChan12)
-		e = <-errChan12
+		reporter.SendWarning("warning", false, true, errChan)
+		e = <-errChan
 		assert.NoError(t, e)
 		done <- 12
 		snapshotNum++
 		compareSnapshot(snapshotNum, t, reporter)
 
 		//finally test a caller that forgets to read the error channel
-		errChan14 := make(chan error)
-		timelocked := time.Now()
-		reporter.SendWarning("warning", false, true, errChan12)
+		timeLocked := time.Now()
+		reporter.SendWarning("warning", false, true, errChan)
 		//call a mutex blocking function
 		reporter.SetStatus("status")
-		dur := time.Now().Sub(timelocked)
+		dur := time.Since(timeLocked)
 		assert.True(t, dur.Milliseconds() < 500)
 		//if we are here the mutex was unlocked after few retries to write to the error channel
 		done <- 13
 		select {
-		case <-errChan14:
+		case <-errChan:
 			t.Error("should not have received an error")
 		default:
 			done <- 14
@@ -287,7 +277,7 @@ func TestSendDeadlock(t *testing.T) {
 	expectedMsgs := 14
 	for i := 0; i <= expectedMsgs+1; i++ {
 		select {
-		case <-time.After(10 * time.Second):
+		case <-time.After(time.Second):
 			if i <= expectedMsgs {
 				t.Fatalf("Deadlock detected message %d did not arrive", i)
 			}
