@@ -265,12 +265,29 @@ func TestSendDeadlock(t *testing.T) {
 		snapshotNum++
 		compareSnapshot(snapshotNum, t, reporter)
 
+		//finally test a caller that forgets to read the error channel
+		errChan14 := make(chan error)
+		timelocked := time.Now()
+		reporter.SendWarning("warning", false, true, errChan12)
+		//call a mutex blocking function
+		reporter.SetStatus("status")
+		dur := time.Now().Sub(timelocked)
+		assert.True(t, dur.Milliseconds() < 500)
+		//if we are here the mutex was unlocked after few retries to write to the error channel
+		done <- 13
+		select {
+		case <-errChan14:
+			t.Error("should not have received an error")
+		default:
+			done <- 14
+		}
+
 	}()
 
-	expectedMsgs := 12
+	expectedMsgs := 14
 	for i := 0; i <= expectedMsgs+1; i++ {
 		select {
-		case <-time.After(1 * time.Second):
+		case <-time.After(10 * time.Second):
 			if i <= expectedMsgs {
 				t.Fatalf("Deadlock detected message %d did not arrive", i)
 			}

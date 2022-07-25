@@ -90,12 +90,12 @@ func (report *BaseReport) unprotectedSendAsRoutine(errChan chan<- error, progres
 		status, body, err := report.Send()
 		if errChan != nil {
 			if err != nil {
-				errChan <- err
+				errorChannelSend(errChan, err)
 				return
 			}
 			if status < 200 || status >= 300 {
 				err := fmt.Errorf("failed to send report. Status: %d Body:%s", status, body)
-				errChan <- err
+				errorChannelSend(errChan, err)
 				return
 			}
 		}
@@ -103,9 +103,26 @@ func (report *BaseReport) unprotectedSendAsRoutine(errChan chan<- error, progres
 			report.NextActionID()
 		}
 		if errChan != nil {
-			errChan <- nil
+			errorChannelSend(errChan, err)
 		}
 	}()
+}
+
+func errorChannelSend(errChan chan<- error, err error) {
+	if errChan == nil {
+		return
+	}
+	//let the error channel reader have at least 0.5 seconds to read the error
+	for i := 0; i < 500; i++ {
+		select {
+		case errChan <- err:
+			return
+		default:
+			time.Sleep(time.Millisecond)
+		}
+	}
+	glog.Errorf("Failed to send error to the error channel after 0.5 seconds")
+
 }
 
 func (report *BaseReport) GetReportID() string {
@@ -198,9 +215,7 @@ func (report *BaseReport) SendError(err error, sendReport bool, initErrors bool,
 			report.mutex.Unlock() // -
 		}(report)
 	} else {
-		if errChan != nil {
-			go func() { errChan <- nil }()
-		}
+		go func() { errorChannelSend(errChan, nil) }()
 		if initErrors {
 			report.Errors = make([]string, 0)
 		}
@@ -230,9 +245,7 @@ func (report *BaseReport) SendWarning(warnMsg string, sendReport bool, initWarni
 			report.mutex.Unlock() // -
 		}(report)
 	} else {
-		if errChan != nil {
-			go func() { errChan <- nil }()
-		}
+		go func() { errorChannelSend(errChan, nil) }()
 		if initWarnings {
 			report.Errors = make([]string, 0)
 		}
@@ -252,7 +265,7 @@ func (report *BaseReport) SendAction(actionName string, sendReport bool, errChan
 		}(report)
 	} else {
 		if errChan != nil {
-			go func() { errChan <- nil }()
+			go func() { errorChannelSend(errChan, nil) }()
 		}
 		report.mutex.Unlock() // -
 	}
@@ -270,7 +283,7 @@ func (report *BaseReport) SendStatus(status string, sendReport bool, errChan cha
 		}(report)
 	} else {
 		if errChan != nil {
-			go func() { errChan <- nil }()
+			go func() { errorChannelSend(errChan, nil) }()
 		}
 		report.mutex.Unlock() // -
 	}
@@ -288,7 +301,7 @@ func (report *BaseReport) SendDetails(details string, sendReport bool, errChan c
 		}(report)
 	} else {
 		if errChan != nil {
-			go func() { errChan <- nil }()
+			go func() { errorChannelSend(errChan, nil) }()
 		}
 		report.mutex.Unlock() // -
 	}
