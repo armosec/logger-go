@@ -16,6 +16,7 @@ import (
 )
 
 var MAX_RETRIES int = 3
+var RETRY_DELAY time.Duration = time.Second * 5
 
 func (report *BaseReport) InitMutex() {
 	report.mutex = sync.Mutex{}
@@ -136,14 +137,20 @@ func (report *BaseReport) Send() (int, string, error) {
 	for i := 0; i < MAX_RETRIES; i++ {
 		resp, err = http.Post(url, "application/json", bytes.NewBuffer(reqBody))
 		bodyAsStr = "body could not be fetched"
-		if resp != nil && resp.Body != nil {
-			body, err := ioutil.ReadAll(resp.Body)
-			if err == nil {
-				bodyAsStr = string(body)
+		retry := err != nil
+		if resp != nil {
+			if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+				retry = true
 			}
-			resp.Body.Close()
+			if resp.Body != nil {
+				body, err := ioutil.ReadAll(resp.Body)
+				if err == nil {
+					bodyAsStr = string(body)
+				}
+				resp.Body.Close()
+			}
 		}
-		if err == nil {
+		if !retry {
 			break
 		}
 		//else err != nil
@@ -154,7 +161,7 @@ func (report *BaseReport) Send() (int, string, error) {
 			return 500, e.Error(), err
 		}
 		//wait 5 secs between retries
-		time.Sleep(time.Second * 5)
+		time.Sleep(RETRY_DELAY)
 	}
 	//first successful report gets it's jobID/proccessID
 	if len(report.JobID) == 0 && bodyAsStr != "ok" && resp.StatusCode >= 200 && resp.StatusCode < 300 {

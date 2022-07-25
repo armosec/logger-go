@@ -5,6 +5,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -121,6 +122,9 @@ func TestSetAction(t *testing.T) {
 }
 
 func TestSendDeadlock(t *testing.T) {
+	MAX_RETRIES = 2
+	RETRY_DELAY = 0
+	os.Setenv("CA_EVENT_RECEIVER_HTTP", "https://dummyeventreceiver.com")
 	done := make(chan interface{})
 
 	go func() {
@@ -266,7 +270,7 @@ func TestSendDeadlock(t *testing.T) {
 	expectedMsgs := 12
 	for i := 0; i <= expectedMsgs+1; i++ {
 		select {
-		case <-time.After(300 * time.Millisecond):
+		case <-time.After(1 * time.Second):
 			if i <= expectedMsgs {
 				t.Fatalf("Deadlock detected message %d did not arrive", i)
 			}
@@ -311,40 +315,62 @@ var report10_snapshot []byte
 //go:embed fixtures/report11_snapshot.json
 var report11_snapshot []byte
 
+//set to true to update expected snapshots
+var updateExpected = false
+
 func compareSnapshot(id int, t *testing.T, r *BaseReport) {
 	r.mutex.Lock()
 	rStr, _ := json.MarshalIndent(r, "", "\t")
-	/*
-		uncomment to update expected snapshots
-		os.WriteFile(fmt.Sprintf("./fixtures/report%d_snapshot.json", id), rStr, 0666)
-	*/
 	r.mutex.Unlock()
-	var expected []byte
+
+	if updateExpected {
+		os.WriteFile(fmt.Sprintf("./fixtures/report%d_snapshot.json", id), rStr, 0666)
+		return
+	}
+
+	actual := &BaseReport{}
+	if err := json.Unmarshal(rStr, actual); err != nil {
+		t.Error(fmt.Sprintf("Could not decode actual to compare with report%d_snapshot.json ", id), err)
+	}
+
+	var expectedBytes []byte
 	switch id {
 	case 1:
-		expected = report1_snapshot
+		expectedBytes = report1_snapshot
 	case 2:
-		expected = report2_snapshot
+		expectedBytes = report2_snapshot
 	case 3:
-		expected = report3_snapshot
+		expectedBytes = report3_snapshot
 	case 4:
-		expected = report4_snapshot
+		expectedBytes = report4_snapshot
 	case 5:
-		expected = report5_snapshot
+		expectedBytes = report5_snapshot
 	case 6:
-		expected = report6_snapshot
+		expectedBytes = report6_snapshot
 	case 7:
-		expected = report7_snapshot
+		expectedBytes = report7_snapshot
 	case 8:
-		expected = report8_snapshot
+		expectedBytes = report8_snapshot
 	case 9:
-		expected = report9_snapshot
+		expectedBytes = report9_snapshot
 	case 10:
-		expected = report10_snapshot
+		expectedBytes = report10_snapshot
 	case 11:
-		expected = report11_snapshot
+		expectedBytes = report11_snapshot
 	default:
 		t.Fatalf("Unknown snapshot id: %d", id)
 	}
-	assert.Equal(t, string(expected), string(rStr), "Snapshot id: %d is different than expected", id)
+	expectedReport := &BaseReport{}
+	if err := json.Unmarshal(expectedBytes, expectedReport); err != nil {
+		t.Error(fmt.Sprintf("Could not decode report%d_snapshot.json ", id), err)
+	}
+	expectedReport.Timestamp = actual.Timestamp
+	expectedReport.eventReceiverUrl = actual.eventReceiverUrl
+	if expectedReport.Errors == nil {
+		expectedReport.Errors = make([]string, 0)
+	}
+	if actual.Errors == nil {
+		actual.Errors = make([]string, 0)
+	}
+	assert.Equal(t, expectedReport, actual, "Snapshot id: %d is different than expected", id)
 }
