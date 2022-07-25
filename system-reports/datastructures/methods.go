@@ -16,9 +16,22 @@ import (
 )
 
 var MAX_RETRIES int = 3
+var RETRY_DELAY time.Duration = time.Second * 5
 
 func (report *BaseReport) InitMutex() {
 	report.mutex = sync.Mutex{}
+}
+func (report *BaseReport) getEventReceiverUrl() (string, error) {
+	if len(report.eventReceiverUrl) == 0 {
+		report.eventReceiverUrl = os.Getenv("CA_EVENT_RECEIVER_HTTP")
+	}
+	if len(report.eventReceiverUrl) == 0 {
+		report.eventReceiverUrl = os.Getenv("CA_ARMO_EVENT_URL") // Deprecated
+	}
+	if len(report.eventReceiverUrl) == 0 {
+		return "", fmt.Errorf("%s - Error: CA_EVENT_RECEIVER_HTTP is missing", report.GetReportID())
+	}
+	return report.eventReceiverUrl, nil
 }
 
 func (report *BaseReport) NextActionID() {
@@ -57,27 +70,61 @@ func (report *BaseReport) AddError(er string) {
 // The caller must read the errChan, to prevent the goroutine from waiting in memory forever
 func (report *BaseReport) SendAsRoutine(progressNext bool, errChan chan<- error) {
 	report.mutex.Lock()
+	wg := &sync.WaitGroup{}
+	report.unprotectedSendAsRoutine(errChan, progressNext, wg)
+	go func(report *BaseReport) {
+		wg.Wait()
+		report.mutex.Unlock()
+	}(report)
+}
+
+//internal send as routine without mutex lock
+func (report *BaseReport) unprotectedSendAsRoutine(errChan chan<- error, progressNext bool, wg *sync.WaitGroup) {
+	wg.Add(1)
 	go func() {
-		defer report.mutex.Unlock()
+
 		defer func() {
+			wg.Done()
 			recover()
 		}()
-		status, _, err := report.Send()
-		if err != nil {
-			errChan <- err
-			return
-		}
-		if status < 200 || status >= 300 {
-			err := fmt.Errorf("failed to send report. Status: %d", status)
-			errChan <- err
-			return
+		status, body, err := report.Send()
+		if errChan != nil {
+			if err != nil {
+				errorChannelSend(errChan, err)
+				return
+			}
+			if status < 200 || status >= 300 {
+				err := fmt.Errorf("failed to send report. Status: %d Body:%s", status, body)
+				errorChannelSend(errChan, err)
+				return
+			}
 		}
 		if progressNext {
 			report.NextActionID()
 		}
-		errChan <- nil
+		if errChan != nil {
+			errorChannelSend(errChan, err)
+		}
 	}()
 }
+
+func errorChannelSend(errChan chan<- error, err error) {
+	if errChan == nil {
+		return
+	}
+	//let the error channel reader have at least 0.5 seconds to read the error
+	for i := 0; i < 500; i++ {
+		select {
+		case errChan <- err:
+			return
+		default:
+			time.Sleep(time.Millisecond)
+		}
+	}
+	glog.Errorf("Failed to send error to the error channel after 0.5 seconds")
+
+}
+
 func (report *BaseReport) GetReportID() string {
 	return fmt.Sprintf("%s::%s::%s (verbose:  %s::%s)", report.Target, report.JobID, report.ActionID, report.ParentAction, report.ActionName)
 }
@@ -85,15 +132,11 @@ func (report *BaseReport) GetReportID() string {
 // Send - send http request. returns-> http status code, return message (jobID/OK), http/go error
 func (report *BaseReport) Send() (int, string, error) {
 
-	url := os.Getenv("CA_EVENT_RECEIVER_HTTP")
-
-	if len(url) == 0 {
-		url = os.Getenv("CA_ARMO_EVENT_URL") // Deprecated
-		if len(url) == 0 {
-			// glog.Errorf("%s - Error: CA_EVENT_RECEIVER_HTTP is missing", report.GetReportID())
-			return 0, "", nil
-		}
+	url, err := report.getEventReceiverUrl()
+	if err != nil {
+		return 0, "", err
 	}
+
 	url = url + SysreportEndpoint
 	report.Timestamp = time.Now()
 	if report.ActionID == "" {
@@ -107,35 +150,43 @@ func (report *BaseReport) Send() (int, string, error) {
 		return 500, "Couldn't marshall report object", err
 	}
 	var resp *http.Response
-
+	var bodyAsStr string
 	for i := 0; i < MAX_RETRIES; i++ {
 		resp, err = http.Post(url, "application/json", bytes.NewBuffer(reqBody))
-		if err == nil {
+		bodyAsStr = "body could not be fetched"
+		retry := err != nil
+		if resp != nil {
+			if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+				retry = true
+			}
+			if resp.Body != nil {
+				body, err := ioutil.ReadAll(resp.Body)
+				if err == nil {
+					bodyAsStr = string(body)
+				}
+				resp.Body.Close()
+			}
+		}
+		if !retry {
 			break
 		}
-		e := fmt.Errorf("attempt #%d %s - Failed posting report. Url: '%s', reason: '%s' report: '%s' ", i, report.GetReportID(), url, err.Error(), string(reqBody))
+		//else err != nil
+		e := fmt.Errorf("attempt #%d %s - Failed posting report. Url: '%s', reason: '%s' report: '%s' response: '%s'", i, report.GetReportID(), url, err.Error(), string(reqBody), bodyAsStr)
 		glog.Error(e)
 
 		if i == MAX_RETRIES-1 {
 			return 500, e.Error(), err
 		}
-
+		//wait 5 secs between retries
+		time.Sleep(RETRY_DELAY)
 	}
-	// TODO - test retry
-
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	bodyAsStr := "body could not be fetched"
-	if err == nil {
-		bodyAsStr = string(body)
-	}
-
 	//first successful report gets it's jobID/proccessID
 	if len(report.JobID) == 0 && bodyAsStr != "ok" && resp.StatusCode >= 200 && resp.StatusCode < 300 {
 		report.JobID = bodyAsStr
 		glog.Infof("Generated jobID: '%s'", report.JobID)
 	}
 	return resp.StatusCode, bodyAsStr, nil
+
 }
 
 // ======================================== SEND WRAPPER =======================================
@@ -152,35 +203,107 @@ func (report *BaseReport) SendError(err error, sendReport bool, initErrors bool,
 		report.Errors = append(report.Errors, e)
 	}
 	report.Status = JobFailed // TODO - Add flag?
-	report.mutex.Unlock()     // -
+
 	if sendReport {
-		report.SendAsRoutine(true, errChan)
+		wg := &sync.WaitGroup{}
+		report.unprotectedSendAsRoutine(errChan, true, wg)
+		go func(report *BaseReport) {
+			wg.Wait()
+			if initErrors {
+				report.Errors = make([]string, 0)
+			}
+			report.mutex.Unlock() // -
+		}(report)
+	} else {
+		go func() { errorChannelSend(errChan, nil) }()
+		if initErrors {
+			report.Errors = make([]string, 0)
+		}
+		report.mutex.Unlock() // -
 	}
-	if sendReport && initErrors {
-		report.mutex.Lock() // +
+}
+
+func (report *BaseReport) SendWarning(warnMsg string, sendReport bool, initWarnings bool, errChan chan<- error) {
+	report.mutex.Lock() // +
+	if report.Errors == nil {
 		report.Errors = make([]string, 0)
+	}
+	if len(warnMsg) != 0 {
+		e := fmt.Sprintf("Action: %s, Error: %s", report.ActionName, warnMsg)
+		report.Errors = append(report.Errors, e)
+	}
+	report.Status = JobWarning
+
+	if sendReport {
+		wg := &sync.WaitGroup{}
+		report.unprotectedSendAsRoutine(errChan, true, wg)
+		go func(report *BaseReport) {
+			wg.Wait()
+			if initWarnings {
+				report.Errors = make([]string, 0)
+			}
+			report.mutex.Unlock() // -
+		}(report)
+	} else {
+		go func() { errorChannelSend(errChan, nil) }()
+		if initWarnings {
+			report.Errors = make([]string, 0)
+		}
 		report.mutex.Unlock() // -
 	}
 }
 
 func (report *BaseReport) SendAction(actionName string, sendReport bool, errChan chan<- error) {
-	report.SetActionName(actionName)
+	report.mutex.Lock()
+	report.doSetActionName(actionName)
 	if sendReport {
-		report.SendAsRoutine(true, errChan)
+		wg := &sync.WaitGroup{}
+		report.unprotectedSendAsRoutine(errChan, true, wg)
+		go func(report *BaseReport) {
+			wg.Wait()
+			report.mutex.Unlock() // -
+		}(report)
+	} else {
+		if errChan != nil {
+			go func() { errorChannelSend(errChan, nil) }()
+		}
+		report.mutex.Unlock() // -
 	}
 }
 
 func (report *BaseReport) SendStatus(status string, sendReport bool, errChan chan<- error) {
-	report.SetStatus(status)
+	report.mutex.Lock()
+	report.doSetStatus(status)
 	if sendReport {
-		report.SendAsRoutine(true, errChan)
+		wg := &sync.WaitGroup{}
+		report.unprotectedSendAsRoutine(errChan, true, wg)
+		go func(report *BaseReport) {
+			wg.Wait()
+			report.mutex.Unlock() // -
+		}(report)
+	} else {
+		if errChan != nil {
+			go func() { errorChannelSend(errChan, nil) }()
+		}
+		report.mutex.Unlock() // -
 	}
 }
 
 func (report *BaseReport) SendDetails(details string, sendReport bool, errChan chan<- error) {
-	report.SetDetails(details)
+	report.mutex.Lock()
+	report.doSetDetails(details)
 	if sendReport {
-		report.SendAsRoutine(true, errChan)
+		wg := &sync.WaitGroup{}
+		report.unprotectedSendAsRoutine(errChan, true, wg)
+		go func(report *BaseReport) {
+			wg.Wait()
+			report.mutex.Unlock() // -
+		}(report)
+	} else {
+		if errChan != nil {
+			go func() { errorChannelSend(errChan, nil) }()
+		}
+		report.mutex.Unlock() // -
 	}
 }
 
@@ -189,59 +312,90 @@ func (report *BaseReport) SendDetails(details string, sendReport bool, errChan c
 func (report *BaseReport) SetReporter(reporter string) {
 	report.mutex.Lock()
 	defer report.mutex.Unlock()
+	report.doSetReporter(reporter)
+}
+func (report *BaseReport) doSetReporter(reporter string) {
 	report.Reporter = strings.ToTitle(reporter)
 }
+
 func (report *BaseReport) SetStatus(status string) {
 	report.mutex.Lock()
 	defer report.mutex.Unlock()
+	report.doSetStatus(status)
+}
+func (report *BaseReport) doSetStatus(status string) {
 	report.Status = status
 }
 
 func (report *BaseReport) SetActionName(actionName string) {
 	report.mutex.Lock()
 	defer report.mutex.Unlock()
+	report.doSetActionName(actionName)
+}
+func (report *BaseReport) doSetActionName(actionName string) {
 	report.ActionName = actionName
 }
 
 func (report *BaseReport) SetDetails(details string) {
 	report.mutex.Lock()
 	defer report.mutex.Unlock()
+	report.doSetDetails(details)
+}
+func (report *BaseReport) doSetDetails(details string) {
 	report.Details = details
 }
 
 func (report *BaseReport) SetTarget(target string) {
 	report.mutex.Lock()
 	defer report.mutex.Unlock()
+	report.doSetTarget(target)
+}
+func (report *BaseReport) doSetTarget(target string) {
 	report.Target = target
 }
 
 func (report *BaseReport) SetActionID(actionID string) {
 	report.mutex.Lock()
 	defer report.mutex.Unlock()
+	report.doSetActionID(actionID)
+}
+func (report *BaseReport) doSetActionID(actionID string) {
 	report.ActionID = actionID
 }
 
 func (report *BaseReport) SetJobID(jobID string) {
 	report.mutex.Lock()
 	defer report.mutex.Unlock()
+	report.doSetJobID(jobID)
+}
+func (report *BaseReport) doSetJobID(jobID string) {
 	report.JobID = jobID
 }
 
 func (report *BaseReport) SetParentAction(parentAction string) {
 	report.mutex.Lock()
 	defer report.mutex.Unlock()
+	report.doSetParentAction(parentAction)
+}
+func (report *BaseReport) doSetParentAction(parentAction string) {
 	report.ParentAction = parentAction
 }
 
 func (report *BaseReport) SetCustomerGUID(customerGUID string) {
 	report.mutex.Lock()
 	defer report.mutex.Unlock()
+	report.doSetCustomerGUID(customerGUID)
+}
+func (report *BaseReport) doSetCustomerGUID(customerGUID string) {
 	report.CustomerGUID = customerGUID
 }
 
 func (report *BaseReport) SetActionIDN(actionIDN int) {
 	report.mutex.Lock()
 	defer report.mutex.Unlock()
+	report.doSetActionIDN(actionIDN)
+}
+func (report *BaseReport) doSetActionIDN(actionIDN int) {
 	report.ActionIDN = actionIDN
 	report.ActionID = strconv.Itoa(report.ActionIDN)
 }
@@ -249,6 +403,9 @@ func (report *BaseReport) SetActionIDN(actionIDN int) {
 func (report *BaseReport) SetTimestamp(timestamp time.Time) {
 	report.mutex.Lock()
 	defer report.mutex.Unlock()
+	report.doSetTimestamp(timestamp)
+}
+func (report *BaseReport) doSetTimestamp(timestamp time.Time) {
 	report.Timestamp = timestamp
 }
 

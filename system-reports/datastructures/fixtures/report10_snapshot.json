@@ -1,0 +1,21 @@
+{
+	"customerGUID": "new-customer-guid",
+	"reporter": "TESTING REPORTER V2",
+	"target": "testing target",
+	"status": "warning",
+	"action": "action",
+	"errors": [
+		"Action: action, Error: warning",
+		"Action: action, Error: warning",
+		"Action: action, Error: warning",
+		"Action: action, Error: warning",
+		"Action: action, Error: warning",
+		"Action: action, Error: warning"
+	],
+	"actionID": "26",
+	"numSeq": 26,
+	"jobID": "job-id",
+	"parentAction": "parent-action",
+	"details": "details",
+	"timestamp": "2022-07-24T23:51:15.2482933+03:00"
+}

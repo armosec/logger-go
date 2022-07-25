@@ -1,0 +1,13 @@
+{
+	"customerGUID": "new-customer-guid",
+	"reporter": "TESTING REPORTER V2",
+	"target": "testing target",
+	"status": "status",
+	"action": "testing action2",
+	"actionID": "22",
+	"numSeq": 22,
+	"jobID": "job-id",
+	"parentAction": "parent-action",
+	"details": "testing reporter",
+	"timestamp": "2022-07-24T23:51:15.0827828+03:00"
+}
