@@ -70,10 +70,10 @@ type BaseReport struct {
 	ActionIDN        int        `json:"numSeq"`                 // The ActionID in number presentation
 	JobID            string     `json:"jobID"`                  // UID received from the eventReceiver after first report (the initializing is part of the first report)
 	ParentAction     string     `json:"parentAction,omitempty"` // Parent JobID
-	Details          string     `json:"details,omitempty"`      // Parent JobID
+	Details          string     `json:"details,omitempty"`      // Details of the action
 	Timestamp        time.Time  `json:"timestamp"`              //
 	mutex            sync.Mutex `json:"-"`                      // ignore
-	eventReceiverUrl string     `json:"-"`                      // ignore
+	eventReceiverUrl string     `json:"-"`                      // cached env var of event receiver - ignore
 	// Status       StatusType `json:"status"`   //it's status
 }
 

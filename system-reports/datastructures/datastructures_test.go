@@ -315,18 +315,15 @@ var report10_snapshot []byte
 //go:embed fixtures/report11_snapshot.json
 var report11_snapshot []byte
 
-//set to true to update expected snapshots
-var updateExpected = false
-
 func compareSnapshot(id int, t *testing.T, r *BaseReport) {
 	r.mutex.Lock()
 	rStr, _ := json.MarshalIndent(r, "", "\t")
 	r.mutex.Unlock()
 
-	if updateExpected {
-		os.WriteFile(fmt.Sprintf("./fixtures/report%d_snapshot.json", id), rStr, 0666)
-		return
-	}
+	/*uncomment to update expected
+	os.WriteFile(fmt.Sprintf("./fixtures/report%d_snapshot.json", id), rStr, 0666)
+	return
+	*/
 
 	actual := &BaseReport{}
 	if err := json.Unmarshal(rStr, actual); err != nil {
