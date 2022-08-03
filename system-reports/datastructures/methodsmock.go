@@ -18,9 +18,9 @@ func (reportMock *BaseReportMock) NextActionID() {
 }
 func (reportMock *BaseReportMock) SimpleReportAnnotations(setParent bool, setCurrent bool) (string, string) {
 
-	nextactionID := reportMock.GetNextActionId()
+	nextActionID := reportMock.GetNextActionId()
 
-	jobs := JobsAnnotations{LastActionID: nextactionID}
+	jobs := JobsAnnotations{LastActionID: nextActionID}
 	if setParent {
 		jobs.ParentJobID = reportMock.JobID
 	}
@@ -28,7 +28,7 @@ func (reportMock *BaseReportMock) SimpleReportAnnotations(setParent bool, setCur
 		jobs.CurrJobID = reportMock.JobID
 	}
 	jsonAsString, _ := json.Marshal(jobs)
-	return string(jsonAsString), nextactionID
+	return string(jsonAsString), nextActionID
 }
 
 func (reportMock *BaseReportMock) GetNextActionId() string {

@@ -9,12 +9,24 @@ import (
 	"time"
 )
 
-const (
-	SysreportEndpoint = "/k8s/sysreport"
-	// //WT related
-	// WtPreConfigured = "wt preconfigured"
-	// wtUpdateStart   = "wt update started"
+var (
+	systemReportEndpoint = ""
 )
+
+func SetSystemReportEndpoint(endpoint string) {
+	if endpoint == "" {
+		endpoint = "/k8s/sysreport"
+	}
+	systemReportEndpoint = endpoint
+
+}
+
+func GetSystemReportEndpoint() string {
+	if systemReportEndpoint == "" {
+		SetSystemReportEndpoint("")
+	}
+	return systemReportEndpoint
+}
 
 // JobsAnnotations job annotation
 type JobsAnnotations struct {
@@ -61,10 +73,10 @@ const (
 
 type BaseReport struct {
 	CustomerGUID     string     `json:"customerGUID"` // customerGUID as declared in environment
-	Reporter         string     `json:"reporter"`     // webhook, webscoket, other possible components
+	Reporter         string     `json:"reporter"`     // component reporting the event
 	Target           string     `json:"target"`       // wlid, cluster,etc. - which component this event is applicable on
 	Status           string     `json:"status"`       // Action scope: Before action use "started", after action use "failure/success". Reporter scope: Before action use "started", after action use "done".
-	ActionName       string     `json:"action"`       // Stage action. short description of the action to-be-done. When definding an action
+	ActionName       string     `json:"action"`       // Stage action. short description of the action to-be-done. When defining an action
 	Errors           []string   `json:"errors,omitempty"`
 	ActionID         string     `json:"actionID"`               // Stage counter of the E2E process. initialize at 1. The number is increased when sending job report
 	ActionIDN        int        `json:"numSeq"`                 // The ActionID in number presentation
@@ -74,7 +86,6 @@ type BaseReport struct {
 	Timestamp        time.Time  `json:"timestamp"`              //
 	mutex            sync.Mutex `json:"-"`                      // ignore
 	eventReceiverUrl string     `json:"-"`                      // cached env var of event receiver - ignore
-	// Status       StatusType `json:"status"`   //it's status
 }
 
 //
@@ -84,8 +95,8 @@ type BaseReport struct {
 //  "action": "<the action itself- eg. fetching logs from s3",
 //  "errors": <fill if u encountered any>
 //  "actionID" & "actionIDN" - numerical representation - eg if it's the first step then it should be 1, it also allow "forks" to happen
-// 	"jobID": event reciever will fill that for you
-// 	"parentAction": used like if you have like autoattach right? namespaces is the parent job but every wl up has attach but it's parent is the autoattach task
+// 	"jobID": event receiver will fill that for you
+// 	"parentAction": parent ID of the action
 // 	"timestamp": <s.e>
 // 	"customerGUID": s.e
 // }
@@ -107,15 +118,11 @@ type IReporter interface {
 	// createReport() BaseReport
 
 	/*
-				send the report
-				@Output:
-				int: http Status Code,
-				string: message: can be jobID for successful 1st report or "OK" from 2nd report onwards or "body could not be fetched"
-		<<<<<<< HEAD
-				error: error from event receiver
-		=======
-				error: error from event reciever
-		>>>>>>> fix-set-action
+		send the report
+		@Output:
+		int: http Status Code,
+		string: message: can be jobID for successful 1st report or "OK" from 2nd report onwards or "body could not be fetched"
+		error: error from event receiver
 	*/
 	Send() (int, string, error) //send logic here
 	GetReportID() string
@@ -126,22 +133,17 @@ type IReporter interface {
 	GetNextActionId() string
 	NextActionID()
 	/*
-				SimpleReportAnnotations - create an object that can be passed on as annotation and serialize it.
-		<<<<<<< HEAD
-				sometimes we want to share the same jobID throughout the system. e.g:
-		=======
-				sometimes we want to share the same jobID throught the system for e.g:
-		>>>>>>> fix-set-action
-				when we attach a workload we want the reports from websocket,webhook and inclusteraggregator to be with the id
-				and they're continuation of the same report.
+		SimpleReportAnnotations - create an object that can be passed on as annotation and serialize it.
 
-				thus this will save the jobID,it's latest actionID.
-				@Input:
-				setParent- set parentJobID to the jobID
-				setCurrent - set the jobID to the current jobID
+		This objects can be shared between the different microservices processing the same workload.
 
-				@returns:
-				 jsonAsString, nextactionID
+		thus this will save the jobID,it's latest actionID.
+		@Input:
+		setParent- set parentJobID to the jobID
+		setCurrent - set the jobID to the current jobID
+
+		@returns:
+		 jsonAsString, nextActionID
 	*/
 	SimpleReportAnnotations(setParent bool, setCurrent bool) (string, string)
 

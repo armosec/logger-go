@@ -40,9 +40,9 @@ func (report *BaseReport) NextActionID() {
 }
 func (report *BaseReport) SimpleReportAnnotations(setParent bool, setCurrent bool) (string, string) {
 
-	nextactionID := report.GetNextActionId()
+	nextActionID := report.GetNextActionId()
 
-	jobs := JobsAnnotations{LastActionID: nextactionID}
+	jobs := JobsAnnotations{LastActionID: nextActionID}
 	if setParent {
 		jobs.ParentJobID = report.JobID
 	}
@@ -50,7 +50,7 @@ func (report *BaseReport) SimpleReportAnnotations(setParent bool, setCurrent boo
 		jobs.CurrJobID = report.JobID
 	}
 	jsonAsString, _ := json.Marshal(jobs)
-	return string(jsonAsString), nextactionID
+	return string(jsonAsString), nextActionID
 	//ok
 }
 
@@ -121,8 +121,7 @@ func errorChannelSend(errChan chan<- error, err error) {
 			time.Sleep(time.Millisecond)
 		}
 	}
-	glog.Errorf("Failed to send error to the error channel after 0.5 seconds")
-
+	glog.Errorf("Failed to send error to the error channel after 0.5 seconds") //TODO - remove log
 }
 
 func (report *BaseReport) GetReportID() string {
@@ -137,7 +136,7 @@ func (report *BaseReport) Send() (int, string, error) {
 		return 0, "", err
 	}
 
-	url = url + SysreportEndpoint
+	url = url + GetSystemReportEndpoint()
 	report.Timestamp = time.Now()
 	if report.ActionID == "" {
 		report.ActionID = "1"
@@ -146,7 +145,6 @@ func (report *BaseReport) Send() (int, string, error) {
 	reqBody, err := json.Marshal(report)
 
 	if err != nil {
-		glog.Errorf("%s - Failed to marshall report object", report.GetReportID())
 		return 500, "Couldn't marshall report object", err
 	}
 	var resp *http.Response
@@ -172,7 +170,6 @@ func (report *BaseReport) Send() (int, string, error) {
 		}
 		//else err != nil
 		e := fmt.Errorf("attempt #%d %s - Failed posting report. Url: '%s', reason: '%s' report: '%s' response: '%s'", i, report.GetReportID(), url, err.Error(), string(reqBody), bodyAsStr)
-		glog.Error(e)
 
 		if i == MAX_RETRIES-1 {
 			return 500, e.Error(), err
@@ -183,7 +180,6 @@ func (report *BaseReport) Send() (int, string, error) {
 	//first successful report gets it's jobID/proccessID
 	if len(report.JobID) == 0 && bodyAsStr != "ok" && resp.StatusCode >= 200 && resp.StatusCode < 300 {
 		report.JobID = bodyAsStr
-		glog.Infof("Generated jobID: '%s'", report.JobID)
 	}
 	return resp.StatusCode, bodyAsStr, nil
 

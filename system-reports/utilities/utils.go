@@ -24,43 +24,39 @@ func GetJobIDByContext(jobs []byte, context string) (string, datastructures.Jobs
 	return jobject.CurrJobID, jobject, err
 }
 
-func ProcessAnnotations(reporter datastructures.IReporter, jobAnnot interface{}, hasAnnotations bool) {
-	if hasAnnotations {
-		glog.Infof("has job annotation %s", jobAnnot)
-		tmpstr := fmt.Sprintf("%s", jobAnnot)
-		_, jobAnnotObj, jerr := GetJobIDByContext([]byte(tmpstr), "attach")
-		if jerr == nil {
-			if len(jobAnnotObj.CurrJobID) > 0 {
-				reporter.SetJobID(jobAnnotObj.CurrJobID)
-			}
-			glog.Infof("job annotations object: %v", jobAnnotObj)
-
-			reporter.SetParentAction(jobAnnotObj.ParentJobID)
-			reporter.SetActionID(jobAnnotObj.LastActionID)
-			actionID, _ := strconv.Atoi(reporter.GetActionID())
-			reporter.SetActionIDN(actionID)
-		}
-
-	} else {
-		glog.Errorf("no job annotation")
+func ProcessAnnotations(reporter datastructures.IReporter, jobAnnotations interface{}, hasAnnotations bool) error {
+	if !hasAnnotations {
+		return fmt.Errorf("missing job annotations")
 	}
+
+	tmpstr := fmt.Sprintf("%s", jobAnnotations)
+	_, jobAnnotationsObj, err := GetJobIDByContext([]byte(tmpstr), "attach")
+	if err != nil {
+		return fmt.Errorf("unable to parse job annotations: %v", err)
+	}
+
+	if len(jobAnnotationsObj.CurrJobID) > 0 {
+		reporter.SetJobID(jobAnnotationsObj.CurrJobID)
+	}
+
+	reporter.SetParentAction(jobAnnotationsObj.ParentJobID)
+	reporter.SetActionID(jobAnnotationsObj.LastActionID)
+	actionID, _ := strconv.Atoi(reporter.GetActionID())
+	reporter.SetActionIDN(actionID)
+
+	return nil
 }
 
-//incase you want to send it all and just manage jobID, actionID yourself (no locking downtimes)
-func SendImuttableReport(target, reporter, actionID, action, status string, jobID *string, err error) {
-	// go func(jobID *string) {
+// SendImmutableReport incase you want to send it all and just manage jobID, actionID yourself (no locking downtimes)
+func SendImmutableReport(target, reporter, actionID, action, status string, jobID *string, err error) {
 
 	lhs := datastructures.BaseReport{Reporter: reporter, ActionName: action, Target: target, JobID: *jobID, ActionID: actionID, Status: status}
 	lhs.ActionIDN, _ = strconv.Atoi(actionID)
 	if err != nil {
 		lhs.AddError(err.Error())
-		glog.Error(err.Error())
+		glog.Error(err.Error()) // TODO: remove log
 	}
 	_, *jobID, _ = lhs.Send()
-
-	glog.Infof("sent sys-report: %v", lhs)
-
-	// }(jobID)
 
 }
 

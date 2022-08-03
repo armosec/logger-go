@@ -85,14 +85,3 @@ func TestBaseReportTestConcurrentErrorAdding(t *testing.T) {
 
 	}
 }
-
-//integration test- works
-// func TestImmutableBaseReport(t *testing.T) {
-// 	jobId := ""
-// 	// target, reporter, actionID, action, status string, jobID *string, err error
-// 	utilities.SendImmutableReport("wlid://unit-test", "unit-test", "1", "testing", "starting", &jobId, fmt.Errorf("severe error"))
-// 	// if len(jobId) == 0 {
-
-// 	t.Errorf("%v", jobId)
-// 	// }
-//}
