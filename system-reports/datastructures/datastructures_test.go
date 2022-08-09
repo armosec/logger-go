@@ -5,7 +5,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
-	"os"
+	"net/http"
 	"reflect"
 	"strings"
 	"testing"
@@ -124,12 +124,11 @@ func TestSetAction(t *testing.T) {
 func TestSendDeadlock(t *testing.T) {
 	MAX_RETRIES = 2
 	RETRY_DELAY = 0
-	os.Setenv("CA_EVENT_RECEIVER_HTTP", "https://dummyeventreceiver.com")
 	done := make(chan interface{})
 
 	go func() {
 		snapshotNum := 0
-		reporter := NewBaseReport("a-user-guid", "my-reporter")
+		reporter := NewBaseReport("a-user-guid", "my-reporter", "https://dummyeventreceiver.com", &http.Client{})
 		reporter.SetDetails("testing reporter")
 		reporter.SetActionName("testing action")
 

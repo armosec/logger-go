@@ -7,6 +7,7 @@ import (
 
 	"github.com/armosec/armoapi-go/armotypes"
 	"github.com/armosec/logger-go/system-reports/datastructures"
+	"github.com/armosec/utils-go/httputils"
 	"github.com/golang/glog"
 )
 
@@ -60,8 +61,8 @@ func SendImmutableReport(target, reporter, actionID, action, status string, jobI
 
 }
 
-func InitReporter(customerGUID, reporterName, actionName, wlid string, designator *armotypes.PortalDesignator, errChan chan<- error) *datastructures.BaseReport {
-	reporter := datastructures.NewBaseReport(customerGUID, reporterName)
+func InitReporter(customerGUID, reporterName, actionName, wlid, eventReceiverUrl string, httpClient httputils.IHttpClient, designator *armotypes.PortalDesignator, errChan chan<- error) *datastructures.BaseReport {
+	reporter := datastructures.NewBaseReport(customerGUID, reporterName, eventReceiverUrl, httpClient)
 	if actionName != "" {
 		reporter.SetActionName(actionName)
 	}

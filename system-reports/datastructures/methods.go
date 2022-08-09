@@ -1,17 +1,16 @@
 package datastructures
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/armosec/utils-go/httputils"
 	"github.com/golang/glog"
 )
 
@@ -20,18 +19,6 @@ var RETRY_DELAY time.Duration = time.Second * 5
 
 func (report *BaseReport) InitMutex() {
 	report.mutex = sync.Mutex{}
-}
-func (report *BaseReport) getEventReceiverUrl() (string, error) {
-	if len(report.eventReceiverUrl) == 0 {
-		report.eventReceiverUrl = os.Getenv("CA_EVENT_RECEIVER_HTTP")
-	}
-	if len(report.eventReceiverUrl) == 0 {
-		report.eventReceiverUrl = os.Getenv("CA_ARMO_EVENT_URL") // Deprecated
-	}
-	if len(report.eventReceiverUrl) == 0 {
-		return "", fmt.Errorf("%s - Error: CA_EVENT_RECEIVER_HTTP is missing", report.GetReportID())
-	}
-	return report.eventReceiverUrl, nil
 }
 
 func (report *BaseReport) NextActionID() {
@@ -130,13 +117,7 @@ func (report *BaseReport) GetReportID() string {
 
 // Send - send http request. returns-> http status code, return message (jobID/OK), http/go error
 func (report *BaseReport) Send() (int, string, error) {
-
-	url, err := report.getEventReceiverUrl()
-	if err != nil {
-		return 0, "", err
-	}
-
-	url = url + GetSystemReportEndpoint()
+	url := report.eventReceiverUrl + GetSystemReportEndpoint()
 	report.Timestamp = time.Now()
 	if report.ActionID == "" {
 		report.ActionID = "1"
@@ -150,7 +131,7 @@ func (report *BaseReport) Send() (int, string, error) {
 	var resp *http.Response
 	var bodyAsStr string
 	for i := 0; i < MAX_RETRIES; i++ {
-		resp, err = http.Post(url, "application/json", bytes.NewBuffer(reqBody))
+		resp, err = httputils.HttpPost(report.httpClient, url, map[string]string{"Content-Type": "application/json"}, reqBody)
 		bodyAsStr = "body could not be fetched"
 		retry := err != nil
 		if resp != nil {
