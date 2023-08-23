@@ -62,24 +62,6 @@ func (e *sysEndpoint) GetOrDefault() string {
 	return e.Get()
 }
 
-// SetSystemReportEndpoint sets the system report endpoint to the provided
-// value or a default
-//
-// Deprecated: the SetSysetmReportEndpoint shouldn’t be the setter for an
-// unexported variable. Use the sysEndpoint.SetOrDefault() method instead.
-func SetSystemReportEndpoint(endpoint string) {
-	systemReportEndpoint.SetOrDefault(endpoint)
-}
-
-// GetSystemReportEndpoint gets the system report endpoint or sets a default
-// and returns it
-//
-// Deprecated: the GetSysetmReportEndpoint shouldn’t be the setter for an
-// unexported variable. Use the sysEndpoint.GetOrDefault() method instead.
-func GetSystemReportEndpoint() string {
-	return systemReportEndpoint.GetOrDefault()
-}
-
 // JobsAnnotations job annotation
 type JobsAnnotations struct {
 	/* jobID: context   eg. if a certain job has multiple stages

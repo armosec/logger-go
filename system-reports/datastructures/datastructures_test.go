@@ -16,67 +16,6 @@ import (
 	"github.com/francoispqt/gojay"
 )
 
-func TestSetSystemReportEndpoint(t *testing.T) {
-	tt := []struct {
-		name  string
-		input string
-		want  string
-	}{
-		{
-			name:  "valid value is set",
-			input: "/k8s/sysreport-test",
-			want:  "/k8s/sysreport-test",
-		},
-		{
-			name:  "empty value is set to default",
-			input: "",
-			want:  "/k8s/sysreport",
-		},
-	}
-
-	for _, tc := range tt {
-		t.Run(tc.name, func(t *testing.T) {
-			SetSystemReportEndpoint(tc.input)
-
-			got := systemReportEndpoint.Get()
-			assert.Equal(t, tc.want, got)
-		})
-	}
-}
-
-func TestGetSystemReportEndpoint(t *testing.T) {
-	tt := []struct {
-		name          string
-		previousValue string
-		want          string
-		wantAfter     string
-	}{
-		{
-			name:          "previously set value is returned",
-			previousValue: "/k8s/sysreport-test",
-			want:          "/k8s/sysreport-test",
-			wantAfter:     "/k8s/sysreport-test",
-		},
-		{
-			name:          "no previous value returns default",
-			previousValue: "",
-			want:          "/k8s/sysreport",
-			wantAfter:     "/k8s/sysreport",
-		},
-	}
-
-	for _, tc := range tt {
-		t.Run(tc.name, func(t *testing.T) {
-			systemReportEndpoint.Set(tc.previousValue)
-
-			got := GetSystemReportEndpoint()
-			gotAfter := systemReportEndpoint.Get()
-			assert.Equal(t, tc.want, got)
-			assert.Equalf(t, tc.wantAfter, gotAfter, "default value has not been set after getting with default")
-		})
-	}
-}
-
 func TestSystemReportEndpointSetOrDefault(t *testing.T) {
 	tt := []struct {
 		name  string
@@ -165,18 +104,6 @@ func TestSystemReportEndpointIsEmpty(t *testing.T) {
 			assert.Equal(t, tc.want, got)
 		})
 	}
-}
-
-// When run with `go test -race`, tests that concurrent access to the system report endpoint is safe
-func TestSetSystemReportEndpointConcurrent(t *testing.T) {
-	go SetSystemReportEndpoint("a")
-	go SetSystemReportEndpoint("b")
-}
-
-// When run with `go test -race`, tests that concurrent access to the system report endpoint is safe
-func TestGetSystemReportEndpointConcurrent(t *testing.T) {
-	go GetSystemReportEndpoint()
-	go GetSystemReportEndpoint()
 }
 
 func TestBaseReportStructure(t *testing.T) {
