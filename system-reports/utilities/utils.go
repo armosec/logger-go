@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/armosec/armoapi-go/armotypes"
+	"github.com/armosec/armoapi-go/identifiers"
 	"github.com/armosec/logger-go/system-reports/datastructures"
 	"github.com/armosec/utils-go/httputils"
 	"github.com/golang/glog"
@@ -15,8 +15,8 @@ var (
 	EmptyString = []string{}
 )
 
-//TODO
-//takes annotation and return the jobID, annotationObject, err
+// TODO
+// takes annotation and return the jobID, annotationObject, err
 func GetJobIDByContext(jobs []byte, context string) (string, datastructures.JobsAnnotations, error) {
 
 	var jobject datastructures.JobsAnnotations
@@ -61,7 +61,7 @@ func SendImmutableReport(target, reporter, actionID, action, status string, jobI
 
 }
 
-func InitReporter(customerGUID, reporterName, actionName, wlid, eventReceiverUrl string, httpClient httputils.IHttpClient, designator *armotypes.PortalDesignator, errChan chan<- error) *datastructures.BaseReport {
+func InitReporter(customerGUID, reporterName, actionName, wlid, eventReceiverUrl string, httpClient httputils.IHttpClient, designator *identifiers.PortalDesignator, errChan chan<- error) *datastructures.BaseReport {
 	reporter := datastructures.NewBaseReport(customerGUID, reporterName, eventReceiverUrl, httpClient)
 	if actionName != "" {
 		reporter.SetActionName(actionName)
@@ -75,13 +75,13 @@ func InitReporter(customerGUID, reporterName, actionName, wlid, eventReceiverUrl
 	return reporter
 }
 
-func GetTargetFromDesignator(designator *armotypes.PortalDesignator) string {
+func GetTargetFromDesignator(designator *identifiers.PortalDesignator) string {
 	switch designator.DesignatorType {
-	case armotypes.DesignatorWlid:
+	case identifiers.DesignatorWlid:
 		return designator.WLID
-	case armotypes.DesignatorWildWlid:
+	case identifiers.DesignatorWildWlid:
 		return designator.WildWLID
-	case armotypes.DesignatorAttributes:
+	case identifiers.DesignatorAttributes:
 		if designator.Attributes != nil {
 			return convertMapToString(designator.Attributes)
 		}
