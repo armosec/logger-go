@@ -16,6 +16,96 @@ import (
 	"github.com/francoispqt/gojay"
 )
 
+func TestSystemReportEndpointSetOrDefault(t *testing.T) {
+	tt := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{
+			name:  "valid value is set",
+			input: "/k8s/sysreport-test",
+			want:  "/k8s/sysreport-test",
+		},
+		{
+			name:  "empty value is set to default",
+			input: "",
+			want:  "/k8s/sysreport",
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			systemReportEndpoint.SetOrDefault(tc.input)
+
+			got := systemReportEndpoint.Get()
+			assert.Equal(t, tc.want, got)
+		})
+	}
+}
+
+func TestSystemReportEndpointGetOrDefault(t *testing.T) {
+	tt := []struct {
+		name          string
+		previousValue string
+		want          string
+		wantAfter     string
+	}{
+		{
+			name:          "previously set value is returned",
+			previousValue: "/k8s/sysreport-test",
+			want:          "/k8s/sysreport-test",
+			wantAfter:     "/k8s/sysreport-test",
+		},
+		{
+			name:          "no previous value returns default",
+			previousValue: "",
+			want:          "/k8s/sysreport",
+			wantAfter:     "/k8s/sysreport",
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			systemReportEndpoint.Set(tc.previousValue)
+
+			got := systemReportEndpoint.GetOrDefault()
+			gotAfter := systemReportEndpoint.Get()
+			assert.Equal(t, tc.want, got)
+			assert.Equalf(t, tc.wantAfter, gotAfter, "default value has not been set after getting with default")
+		})
+	}
+}
+
+func TestSystemReportEndpointIsEmpty(t *testing.T) {
+	tt := []struct {
+		name  string
+		value string
+		want  bool
+	}{
+		{
+			name:  "empty string as endpoint value is considered empty",
+			value: "",
+			want:  true,
+		},
+		{
+			name:  "non-empty string as endpoint value is considered empty",
+			value: "/k8s/sysreport",
+			want:  false,
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			systemReportEndpoint.Set(tc.value)
+
+			got := systemReportEndpoint.IsEmpty()
+
+			assert.Equal(t, tc.want, got)
+		})
+	}
+}
+
 func TestBaseReportStructure(t *testing.T) {
 	// a := BaseReport{Reporter: "unit-test", Target: "unit-test-framework", JobID: "id", ActionID: "id2"}
 	// timestamp := a.Timestamp
