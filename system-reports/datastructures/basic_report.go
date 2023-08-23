@@ -11,23 +11,73 @@ import (
 	"github.com/armosec/utils-go/httputils"
 )
 
-var (
-	systemReportEndpoint = ""
+const (
+	defaultSystemReportEndpoint = "/k8s/sysreport"
 )
 
-func SetSystemReportEndpoint(endpoint string) {
-	if endpoint == "" {
-		endpoint = "/k8s/sysreport"
-	}
-	systemReportEndpoint = endpoint
+var (
+	systemReportEndpoint = &sysEndpoint{}
+)
 
+type sysEndpoint struct {
+	value string
+	mu    sync.RWMutex
 }
 
-func GetSystemReportEndpoint() string {
-	if systemReportEndpoint == "" {
-		SetSystemReportEndpoint("")
+func (e *sysEndpoint) IsEmpty() bool {
+	return e.Get() == ""
+}
+
+func (e *sysEndpoint) Set(value string) {
+	e.mu.Lock()
+	e.value = value
+	e.mu.Unlock()
+}
+
+func (e *sysEndpoint) Get() string {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	return e.value
+}
+
+// SetOrDefault sets the system report endpoint to the provided value for valid
+// inputs, or to a default value on invalid ones
+//
+// An empty input is considered invalid, and would thus be set to a default endpoint
+func (e *sysEndpoint) SetOrDefault(value string) {
+	if value == "" {
+		value = defaultSystemReportEndpoint
 	}
-	return systemReportEndpoint
+	e.Set(value)
+}
+
+// GetOrDefault returns the value of the current system report endpoint if it
+// is set. If not set, it sets the value to a default and returns the newly set
+// value
+func (e *sysEndpoint) GetOrDefault() string {
+	current := e.Get()
+	if current == "" {
+		e.SetOrDefault("")
+	}
+	return e.Get()
+}
+
+// SetSystemReportEndpoint sets the system report endpoint to the provided
+// value or a default
+//
+// Deprecated: the SetSysetmReportEndpoint shouldn’t be the setter for an
+// unexported variable. Use the sysEndpoint.SetOrDefault() method instead.
+func SetSystemReportEndpoint(endpoint string) {
+	systemReportEndpoint.SetOrDefault(endpoint)
+}
+
+// GetSystemReportEndpoint gets the system report endpoint or sets a default
+// and returns it
+//
+// Deprecated: the GetSysetmReportEndpoint shouldn’t be the setter for an
+// unexported variable. Use the sysEndpoint.GetOrDefault() method instead.
+func GetSystemReportEndpoint() string {
+	return systemReportEndpoint.GetOrDefault()
 }
 
 // JobsAnnotations job annotation

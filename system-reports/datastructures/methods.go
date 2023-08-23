@@ -117,7 +117,7 @@ func (report *BaseReport) GetReportID() string {
 
 // Send - send http request. returns-> http status code, return message (jobID/OK), http/go error
 func (report *BaseReport) Send() (int, string, error) {
-	url := report.eventReceiverUrl + GetSystemReportEndpoint()
+	url := report.eventReceiverUrl + systemReportEndpoint.GetOrDefault()
 	report.Timestamp = time.Now()
 	if report.ActionID == "" {
 		report.ActionID = "1"
